@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-03 17:42:04
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-03 22:57:37
+@LastEditTime : 2020-05-07 13:01:26
 @Units        : None
 @Description  : The implementation code of q-learning algorithm
 @Dependencies : None
@@ -38,7 +38,7 @@ class QLearningAgent(BaseAgent):
         self.epsilon = agent_init_info["epsilon"]
         self.step_size = agent_init_info["step_size"]
         self.discount = agent_init_info["discount"]
-        self.rand_generator = np.random.RandomState(agent_info["seed"])
+        self.rand_generator = np.random.RandomState(agent_init_info["seed"])
 
         # Create an array for action-value estimates and initialize it to zero.
         # The array of action-value estimates.
@@ -125,47 +125,19 @@ class QLearningAgent(BaseAgent):
 
         return self.rand_generator.choice(ties)
 
+    def agent_cleanup(self):
+        """Cleanup done after the agent ends."""
+        pass
+
+    def agent_message(self, message):
+        """A function used to pass information from the agent to the experiment.
+        Args:
+            message: The message passed to the agent.
+        Returns:
+            The response (or answer) to the message.
+        """
+        pass
+
 
 if __name__ == "__main__":
-    # agents = {
-    #     "Q-learning": QLearningAgent,
-    #     "Expected Sarsa": ExpectedSarsaAgent
-    # }
-    # env = cliffworld_env.Environment
-    all_reward_sums = {}  # Contains sum of rewards during episode
-    all_state_visits = {}  # Contains state visit counts during the last 10 episodes
-    agent_info = {"num_actions": 4*7, "num_states": 11*11,
-                  "epsilon": 0.1, "step_size": 0.5, "discount": 0.9}
-    env_info = {}
-    num_runs = 100  # The number of runs
-    num_episodes = 500  # The number of episodes in each run
-
-    for algorithm in ["Q-learning", "Expected Sarsa"]:
-        all_reward_sums[algorithm] = []
-        all_state_visits[algorithm] = []
-        for run in tqdm(range(num_runs)):
-            agent_info["seed"] = run
-            rl_glue = RLGlue(env, agents[algorithm])
-            rl_glue.rl_init(agent_info, env_info)
-
-            reward_sums = []
-            state_visits = np.zeros(48)
-    #         last_episode_total_reward = 0
-            for episode in range(num_episodes):
-                if episode < num_episodes - 10:
-                    # Runs an episode
-                    rl_glue.rl_episode(0)
-                else:
-                    # Runs an episode while keeping track of visited states
-                    state, action = rl_glue.rl_start()
-                    state_visits[state] += 1
-                    is_terminal = False
-                    while not is_terminal:
-                        reward, state, action, is_terminal = rl_glue.rl_step()
-                        state_visits[state] += 1
-
-                reward_sums.append(rl_glue.rl_return())
-    #             last_episode_total_reward = rl_glue.rl_return()
-
-            all_reward_sums[algorithm].append(reward_sums)
-            all_state_visits[algorithm].append(state_visits)
+    pass

@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-04 18:48:56
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-05 21:56:37
+@LastEditTime : 2020-05-07 14:23:12
 @Units        : Meter, radian (if no description)
 @Description  : env类，与gazebo联动
 @Dependencies : None
@@ -33,10 +33,73 @@ class GazeboEnvironment(BaseEnvironment):
         methods.
     """
 
-    def __init__(self):
+    # def __init__(self):
 
+    #     # initialize
+    #     rospy.init_node('Gazebo_Env', anonymous=False)
+
+    #     # -----------Default Robot State-----------------------
+    #     self.robot_name = 'uav1'
+
+    #     self.init_robot_state = ModelState()
+    #     self.init_robot_state.model_name = self.robot_name
+    #     self.init_robot_state.pose.position.x = 0.0
+    #     self.init_robot_state.pose.position.y = 0.0
+    #     self.init_robot_state.pose.position.z = 1.5
+    #     self.init_robot_state.pose.orientation.x = 0.0
+    #     self.init_robot_state.pose.orientation.y = 0.0
+    #     self.init_robot_state.pose.orientation.z = 0.0
+    #     self.init_robot_state.pose.orientation.w = 1.0
+    #     self.init_robot_state.twist.linear.x = 0.
+    #     self.init_robot_state.twist.linear.y = 0.
+    #     self.init_robot_state.twist.linear.z = 0.
+    #     self.init_robot_state.twist.angular.x = 0.
+    #     self.init_robot_state.twist.angular.y = 0.
+    #     self.init_robot_state.twist.angular.z = 0.
+    #     self.init_robot_state.reference_frame = 'world'
+
+    #     # ----------- Parameters in RL env class -----------
+    #     self.maze_dim = [11, 11]
+
+    #     origin = self.init_robot_state.pose.position
+    #     # coordination of the target point.
+    #     self.target_position = (origin.x + 0.5, origin.y + 0.0, origin.z)
+    #     # self.end_state = [0, 0]
+    #     self.end_radius = 0.05  # meters
+    #     # The robot's pose and twist infomation under world frame
+    #     self.current_state = ModelState()
+
+    #     reward = None
+    #     observation = None
+    #     termination = None
+    #     self.reward_obs_term = [reward, observation, termination]
+
+    #     # -----------Publisher and Subscriber-------------
+    #     self.sub_state = rospy.Subscriber(
+    #         '/gazebo/model_states', ModelStates, self.state_callback)
+
+    #     self.set_state = rospy.Publisher(
+    #         '/gazebo/set_model_state', ModelState, queue_size=10)
+
+    #     self.pub_command = rospy.Publisher(
+    #         '/uav1/pose_cmd', Twist, queue_size=10)
+
+    #     rospy.sleep(2.)
+    #     # # What function to call when you ctrl + c
+    #     # rospy.on_shutdown(self.shutdown)
+
+    def env_init(self, env_info):
+        """Setup for the environment called when the experiment first starts.
+
+        Note:
+            Initialize a tuple with the reward, first state observation, boolean
+            indicating if it's terminal.
+        """
         # initialize
-        rospy.init_node('Gazebo_Env', anonymous=False)
+        try:
+            rospy.init_node('Gazebo_Env', anonymous=False)
+        except rospy.ROSInitException:
+            print "Error: 初始化节点失败，检查gazebo环境是否提前运行。"
 
         # -----------Default Robot State-----------------------
         self.robot_name = 'uav1'
@@ -63,17 +126,12 @@ class GazeboEnvironment(BaseEnvironment):
 
         origin = self.init_robot_state.pose.position
         # coordination of the target point.
-        self.target_position = (origin.x + 1.0, origin.y + 1.0, origin.z)
+        self.target_position = (
+            origin.x + env_info["target_x"], origin.y + env_info["target_y"], origin.z)
         # self.end_state = [0, 0]
-        self.end_radius = 0.05  # meters
+        self.end_radius = env_info["end_radius"]  # meters
         # The robot's pose and twist infomation under world frame
         self.current_state = ModelState()
-        self.init_cmd = Twist()  # 控制量
-
-        reward = None
-        observation = None
-        termination = None
-        self.reward_obs_term = [reward, observation, termination]
 
         # -----------Publisher and Subscriber-------------
         self.sub_state = rospy.Subscriber(
@@ -89,35 +147,7 @@ class GazeboEnvironment(BaseEnvironment):
         # # What function to call when you ctrl + c
         # rospy.on_shutdown(self.shutdown)
 
-    def send_cmd_until_stop(self, command, transfer_flag=False):
-        '''Receives a command under base_link frame, sends it to pose_cmd node and waits until the uav stops.
-        Input: pose_command, Twist()
-        Output: None
-        '''
-        # Transfers the command between two frames.
-        if transfer_flag == True:
-            pass
-            # world_cmd = self.trans_command(command)
-        else:
-            world_cmd = command
-
-        # publishes the command until the uav reaches the target
-        rate = rospy.Rate(10)
-        while not rospy.is_shutdown():
-            pose = self.current_state.pose
-            q = pose.orientation
-            rpy = trans.euler_from_quaternion([q.x, q.y, q.z, q.w])  # radians
-
-            # 0.5 degree, 1 cm
-            if (abs(world_cmd.angular.z - rpy[2]) < 0.008) \
-                and (abs(world_cmd.linear.x - pose.position.x) < 0.01) \
-                    and (abs(world_cmd.linear.y - pose.position.y) < 0.01):
-                print '1'
-                break
-            self.pub_command.publish(world_cmd)
-            # print 'currentPose', self.currentPose
-            # print 'target_pose', world_cmd
-            rate.sleep()
+        self.reward_obs_term = [0.0, None, False]
 
     def state_callback(self, States):
         '''The callback function of Subscriber: sub_state.
@@ -146,15 +176,34 @@ class GazeboEnvironment(BaseEnvironment):
                 break
             rate.sleep()
 
-    def env_init(self, agent_info={}):
-        """Setup for the environment called when the experiment first starts.
+    def send_cmd_until_stop(self, command, transfer_flag=False):
+        '''Receives a command under base_link frame, sends it to pose_cmd node and waits until the uav stops.
+        Input: pose_command, Twist()
+        Output: None
+        '''
+        # Transfers the command between two frames.
+        if transfer_flag == True:
+            world_cmd = self.coor_trans(command, self.current_state)
+        else:
+            world_cmd = command
 
-        Note:
-            Initialize a tuple with the reward, first state observation, boolean
-            indicating if it's terminal.
-        """
+        # publishes the command until the uav reaches the target
+        rate = rospy.Rate(10)
+        while not rospy.is_shutdown():
+            pose = self.current_state.pose
+            q = pose.orientation
+            rpy = trans.euler_from_quaternion([q.x, q.y, q.z, q.w])  # radians
 
-        self.reward_obs_term = [0.0, None, False]
+            # 0.5 degree, 1 cm
+            if (abs(world_cmd.angular.z - rpy[2]) < 0.008) \
+                and (abs(world_cmd.linear.x - pose.position.x) < 0.01) \
+                    and (abs(world_cmd.linear.y - pose.position.y) < 0.01):
+                print 'Arrive at the destination!'
+                break
+            self.pub_command.publish(world_cmd)
+            # print 'currentPose', self.currentPose
+            # print 'target_pose', world_cmd
+            rate.sleep()
 
     def env_start(self):
         """The first method called when the experiment starts, called before the
@@ -164,16 +213,28 @@ class GazeboEnvironment(BaseEnvironment):
             The first state observation from the environment.
         """
         # reset the current state = init_state
-        self.set_robot_state(env.init_robot_state)
+        self.set_robot_state(self.init_robot_state)
         self.reward_obs_term[1] = self.get_observation(
             self.current_state, self.target_position)
-        print 'self.reward_obs_term[1]', self.reward_obs_term[1]
         return self.reward_obs_term[1]
 
     # check if current state is within the gridworld and return bool
-    def out_of_bounds(self, row, col):
-        if row < 0 or row > self.maze_dim[0]-1 or col < 0 or col > self.maze_dim[1]-1:
-            return True
+    def out_of_bounds(self, cmd_transferred, current_state, target_position, rl_state):
+        '''Determine if the action could be executed
+        # Input: cmd_transferred: Twist(), current_state: ModelState(), 
+        target_position: tuple(3), rl_state: int
+        # Output: Boolean
+        '''
+        if rl_state >= 110:  # in the outermost circle
+            dis_old = np.sqrt((current_state.pose.position.x -
+                               target_position[0])**2 + (current_state.pose.position.y - target_position[1])**2)
+            dis_new = np.sqrt((cmd_transferred.linear.x -
+                               target_position[0])**2 + (cmd_transferred.linear.y - target_position[1])**2)
+            # if the new action leads to a further result
+            if dis_new > dis_old:
+                return True
+            else:
+                return False
         else:
             return False
 
@@ -218,7 +279,7 @@ class GazeboEnvironment(BaseEnvironment):
                     break
 
         degree = math.atan2(y, x) * 180 / math.pi
-        print 'degree = ', degree
+        # print 'degree = ', degree
 
         if degree < 0:
             degree += 360
@@ -233,7 +294,60 @@ class GazeboEnvironment(BaseEnvironment):
 
         return state
 
-    def env_step(self, action):
+    def coor_trans(self, command, current_state):
+        ''' Gets the command under world frame.
+        Input: cmd, under base_link frame: Twist(); current_state, under world frame: ModelState()
+        Return: transferred_cmd: Twist()
+        '''
+
+        trans_cmd = Twist()
+
+        # step1: Position: x, y
+        q = current_state.pose.orientation
+
+        if command.linear.x != 0:
+            # 旋转后base_link坐标系在map坐标系中的姿态 × 目标点在base_link坐标系的中的位置 + base_link坐标系在map坐标系中的位置
+            r_matrix = trans.quaternion_matrix([q.x, q.y, q.z, q.w])[:3, :3]
+
+            t = np.dot(r_matrix, [command.linear.x, command.linear.y, command.linear.z]) + \
+                [current_state.pose.position.x, current_state.pose.position.y,
+                    current_state.pose.position.z]
+
+            # 参考四元数的变换： result = quaternion_multiply(quaternion_multiply(rot, vec), quaternion_conjugate(rot)) + [[t.x], [t.y], [t.z], [0]]
+
+            trans_cmd.linear.x = t[0]
+            trans_cmd.linear.y = t[1]
+            trans_cmd.linear.z = current_state.pose.position.z
+        else:
+            trans_cmd.linear.x = current_state.pose.position.x
+            trans_cmd.linear.y = current_state.pose.position.y
+            trans_cmd.linear.z = current_state.pose.position.z
+
+        # step 2: angle of z axis
+        rpy = trans.euler_from_quaternion([q.x, q.y, q.z, q.w])
+        trans_cmd.angular.z = rpy[2] + command.angular.z
+        # if out of range [-pi, +pi]
+        if trans_cmd.angular.z > math.pi:
+            trans_cmd.angular.z -= 2 * math.pi
+        elif trans_cmd.angular.z < - math.pi:
+            trans_cmd.angular.z += 2 * math.pi
+
+        return trans_cmd
+
+    def get_action_from_index(self, action_index):
+        '''get action from action table by action_index
+        '''
+        cmd = Twist()
+        # action pair: (x(meter), yaw(degree))
+        action_table = [(0.1, 0), (0.05, 0), (0, 0), (-0.1, 0), (0, -30),
+                        (0, -10), (0, -3), (0, 3), (0, 10), (0, 30)]
+        action = action_table[action_index]
+        cmd.linear.x = action[0]
+        cmd.angular.z = action[1] * math.pi / 180  # from degree to radian
+
+        return cmd
+
+    def env_step(self, action_index):
         """A step taken by the environment.
 
         Args:
@@ -243,42 +357,44 @@ class GazeboEnvironment(BaseEnvironment):
             (float, state, Boolean): a tuple of the reward, state observation,
                 and boolean indicating if it's terminal.
         """
-
-        reward = 0.0
+        reward = -1.0
         is_terminal = False
 
-        row = self.current_state[0]
-        col = self.current_state[1]
+        ring_index_old = None
+        ring_index_new = None
 
-        # update current_state with the action (also check validity of action)
-        if action == 0:  # up
-            if not (self.out_of_bounds(row-1, col) or self.is_obstacle(row-1, col)):
-                self.current_state = [row-1, col]
+        # # step 1: get action
+        cmd = self.get_action_from_index(action_index)
 
-        elif action == 1:  # right
-            if not (self.out_of_bounds(row, col+1) or self.is_obstacle(row, col+1)):
-                self.current_state = [row, col+1]
+        # step 2: get the command under the map frame
+        cmd_transferred = self.coor_trans(cmd, self.current_state)
 
-        elif action == 2:  # down
-            if not (self.out_of_bounds(row+1, col) or self.is_obstacle(row+1, col)):
-                self.current_state = [row+1, col]
+        # step 3: Determine if the condition for the action has been met and take the action.
+        if self.out_of_bounds(cmd_transferred, self.current_state, self.target_position, self.reward_obs_term[1]):
+            reward = -10.0
+        else:
+            # print 'cmd_transferred =', cmd_transferred
+            print 'action_index =', action_index
+            print 'cmd_transferred', cmd_transferred
+            self.send_cmd_until_stop(cmd_transferred, transfer_flag=False)
 
-        elif action == 3:  # left
-            if not (self.out_of_bounds(row, col-1) or self.is_obstacle(row, col-1)):
-                self.current_state = [row, col-1]
-
-        if self.current_state == self.end_state:  # terminate if goal is reached
-            reward = 1.0
+        # step 4: Determine if the terminal condition has been met.
+        dist = np.sqrt((self.current_state.pose.position.x -
+                        self.target_position[0])**2 + (self.current_state.pose.position.y - self.target_position[1])**2)
+        if dist <= self.end_radius:
+            reward = 50.0
             is_terminal = True
+            print 'Succeed!!!!!'
 
         self.reward_obs_term = [reward, self.get_observation(
-            self.current_state), is_terminal]
+            self.current_state, self.target_position), is_terminal]
 
+        print 'reward_obs_term =', self.reward_obs_term
         return self.reward_obs_term
 
     def env_cleanup(self):
         """Cleanup done after the environment ends"""
-        current_state = None
+        self.current_state = ModelState()
 
     def env_message(self, message):
         """A message asking the environment for information
@@ -299,21 +415,31 @@ class GazeboEnvironment(BaseEnvironment):
 if __name__ == "__main__":
     env = GazeboEnvironment()
 
-    command = Twist()
-    command.angular.z = -90 * math.pi / 180  # from radians to degrees
-    command.linear.x = -0.6
+    # command = Twist()
+    # command.angular.z = -90 * math.pi / 180  # from radians to degrees
+    # command.linear.x = -0.6
+    env.env_init()
+    env.env_start()
+    while True:
+        # input() 在Python2和Python3中的含义不同
+        t = raw_input("请输入一个介于[0, 9]之间的数字,按q退出: ")
+        if t == 'q':
+            break
+        else:
+            a_index = int(t)
+        env.env_step(a_index)
 
     # rospy.spin()
 
     # env.set_robot_state(env.init_robot_state)
     # env.get_observation(env.current_state, env.target_position)
-    for i in range(10):
-        x = np.random.rand() * 3 - 1.5
-        y = np.random.rand() * 3 - 1.5
-        print 'x,y =', x, y
-        state = env.get_polar_coor(x, y)
-        print 'state =', state
-        print 'state_int =', state[0] * 11 + state[1]
+    # for i in range(10):
+    #     x = np.random.rand() * 3 - 1.5
+    #     y = np.random.rand() * 3 - 1.5
+    #     print 'x,y =', x, y
+    #     state = env.get_polar_coor(x, y)
+    #     print 'state =', state
+    #     print 'state_int =', state[0] * 11 + state[1]
 
     # try:
     #     env.set_robot_state(env.init_robot_state)
