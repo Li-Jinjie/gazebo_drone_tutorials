@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-07 10:18:06
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-07 12:58:11
+@LastEditTime : 2020-05-07 15:43:49
 @Units        : None
 @Description  : file content
 @Dependencies : None
@@ -12,6 +12,7 @@
 '''
 import shutil
 import os
+import sys
 import numpy as np
 from q_learning import QLearningAgent
 from expected_sarsa import ExpectedSarsaAgent
@@ -60,6 +61,11 @@ if __name__ == "__main__":
                     state_visits[state] += 1
                     is_terminal = False
                     while not is_terminal:
+                        # stop the program
+                        line = sys.stdin.readline()
+                        print 'line=', line
+                        if line == 'q':
+                            sys.exit()
                         reward, state, action, is_terminal = rl_glue.rl_step()
                         state_visits[state] += 1
 

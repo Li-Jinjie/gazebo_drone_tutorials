@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-04 18:48:56
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-07 14:23:12
+@LastEditTime : 2020-05-07 21:54:52
 @Units        : Meter, radian (if no description)
 @Description  : env类，与gazebo联动
 @Dependencies : None
@@ -36,57 +36,25 @@ class GazeboEnvironment(BaseEnvironment):
     # def __init__(self):
 
     #     # initialize
-    #     rospy.init_node('Gazebo_Env', anonymous=False)
+    #     # 感觉应该在这里把用到的变量说明一下
 
     #     # -----------Default Robot State-----------------------
-    #     self.robot_name = 'uav1'
+    #     self.robot_name = None
 
     #     self.init_robot_state = ModelState()
-    #     self.init_robot_state.model_name = self.robot_name
-    #     self.init_robot_state.pose.position.x = 0.0
-    #     self.init_robot_state.pose.position.y = 0.0
-    #     self.init_robot_state.pose.position.z = 1.5
-    #     self.init_robot_state.pose.orientation.x = 0.0
-    #     self.init_robot_state.pose.orientation.y = 0.0
-    #     self.init_robot_state.pose.orientation.z = 0.0
-    #     self.init_robot_state.pose.orientation.w = 1.0
-    #     self.init_robot_state.twist.linear.x = 0.
-    #     self.init_robot_state.twist.linear.y = 0.
-    #     self.init_robot_state.twist.linear.z = 0.
-    #     self.init_robot_state.twist.angular.x = 0.
-    #     self.init_robot_state.twist.angular.y = 0.
-    #     self.init_robot_state.twist.angular.z = 0.
-    #     self.init_robot_state.reference_frame = 'world'
-
     #     # ----------- Parameters in RL env class -----------
     #     self.maze_dim = [11, 11]
-
-    #     origin = self.init_robot_state.pose.position
     #     # coordination of the target point.
-    #     self.target_position = (origin.x + 0.5, origin.y + 0.0, origin.z)
-    #     # self.end_state = [0, 0]
-    #     self.end_radius = 0.05  # meters
+    #     self.target_position = (None, None, None)
+    #     self.end_radius = None  # meters
     #     # The robot's pose and twist infomation under world frame
-    #     self.current_state = ModelState()
+    #     self.current_state = None
 
+    # 这些None都不占存储空间，表示占了个坑
     #     reward = None
     #     observation = None
     #     termination = None
     #     self.reward_obs_term = [reward, observation, termination]
-
-    #     # -----------Publisher and Subscriber-------------
-    #     self.sub_state = rospy.Subscriber(
-    #         '/gazebo/model_states', ModelStates, self.state_callback)
-
-    #     self.set_state = rospy.Publisher(
-    #         '/gazebo/set_model_state', ModelState, queue_size=10)
-
-    #     self.pub_command = rospy.Publisher(
-    #         '/uav1/pose_cmd', Twist, queue_size=10)
-
-    #     rospy.sleep(2.)
-    #     # # What function to call when you ctrl + c
-    #     # rospy.on_shutdown(self.shutdown)
 
     def env_init(self, env_info):
         """Setup for the environment called when the experiment first starts.
@@ -251,11 +219,24 @@ class GazeboEnvironment(BaseEnvironment):
         In: robot_state, ModelState(); target_position, tuple(3)
         Returns: state_observation, int
         '''
+        # in the world frame
         x_relative = target_position[0] - robot_state.pose.position.x
         y_relative = target_position[1] - robot_state.pose.position.y
-        # print 'x_relative', x_relative
-        # print 'y_relative', y_relative
-        state = self.get_polar_coor(x_relative, y_relative)
+
+        # coordinates transfer
+        # 在base系中的坐标 = world系在base系中的旋转矩阵(base系在world系中的旋转矩阵求逆) × 在world系中的坐标
+        # 坐标变换一定要万分小心仔细
+        q = robot_state.pose.orientation
+        r_matrix = trans.quaternion_matrix([q.x, q.y, q.z, q.w])[:3, :3]
+        r_matrix_inverse = trans.inverse_matrix(r_matrix)
+        relative_coor_base = np.dot(
+            r_matrix_inverse, [x_relative, y_relative, 0])
+
+        # print 'relative_coor_base =', relative_coor_base
+
+        # get RL state
+        state = self.get_polar_coor(
+            relative_coor_base[0], relative_coor_base[1])
         return state[0] * self.maze_dim[1] + state[1]
 
     def get_polar_coor(self, x, y):
@@ -266,8 +247,8 @@ class GazeboEnvironment(BaseEnvironment):
                        (0.2, 0.3), (0.3, 0.4), (0.4, 0.5),
                        (0.5, 0.7), (0.7, 0.9), (0.9, 1.1),
                        (1.1, 1.3), (1.3, 1.5)]
-        degree_borders = [(0, 45), (45, 75), (75, 85),
-                          (85, 95), (95, 105), (105, 135), (135, 180), (180, 225), (225, 270), (270, 315), (315, 360)]
+        degree_borders = [(-5, +5), (5, 15), (15, 45), (45, 90),
+                          (90, 135), (135, 180), (-180, -135), (-135, -90), (-90, -45), (-45, -15), (-15, -5)]
 
         distance = np.sqrt(x ** 2 + y ** 2)
         if distance > 1.5:
@@ -281,14 +262,15 @@ class GazeboEnvironment(BaseEnvironment):
         degree = math.atan2(y, x) * 180 / math.pi
         # print 'degree = ', degree
 
-        if degree < 0:
+        # (-180, 180]
+        if degree <= -180:
             degree += 360
-        elif degree >= 360:
+        elif degree > 180:
             degree -= 360
         # print 'degree2 =', degree
 
         for i, (down, up) in enumerate(degree_borders):
-            if degree >= down and degree < up:
+            if degree > down and degree <= up:
                 state[1] = i
                 break
 
@@ -339,7 +321,7 @@ class GazeboEnvironment(BaseEnvironment):
         '''
         cmd = Twist()
         # action pair: (x(meter), yaw(degree))
-        action_table = [(0.1, 0), (0.05, 0), (0, 0), (-0.1, 0), (0, -30),
+        action_table = [(0.2, 0), (0.1, 0), (0.05, 0), (0, 0), (0, -30),
                         (0, -10), (0, -3), (0, 3), (0, 10), (0, 30)]
         action = action_table[action_index]
         cmd.linear.x = action[0]
@@ -357,11 +339,14 @@ class GazeboEnvironment(BaseEnvironment):
             (float, state, Boolean): a tuple of the reward, state observation,
                 and boolean indicating if it's terminal.
         """
-        reward = -1.0
+        reward = 0.0
         is_terminal = False
 
-        ring_index_old = None
+        ring_index_old = self.reward_obs_term[1] / self.maze_dim[1]
         ring_index_new = None
+
+        fan_index_old = self.reward_obs_term[1] % self.maze_dim[1]
+        fan_index_new = None
 
         # # step 1: get action
         cmd = self.get_action_from_index(action_index)
@@ -369,16 +354,34 @@ class GazeboEnvironment(BaseEnvironment):
         # step 2: get the command under the map frame
         cmd_transferred = self.coor_trans(cmd, self.current_state)
 
-        # step 3: Determine if the condition for the action has been met and take the action.
+        # step 3: Determine if the 'out of border' condition has been met and takes the action.
         if self.out_of_bounds(cmd_transferred, self.current_state, self.target_position, self.reward_obs_term[1]):
             reward = -10.0
         else:
             # print 'cmd_transferred =', cmd_transferred
             print 'action_index =', action_index
-            print 'cmd_transferred', cmd_transferred
+            # print 'cmd_transferred', cmd_transferred
             self.send_cmd_until_stop(cmd_transferred, transfer_flag=False)
 
-        # step 4: Determine if the terminal condition has been met.
+        observation = self.get_observation(
+            self.current_state, self.target_position)
+
+        # step 4.1: Determine if the position gets closer
+        if reward == 0:
+            ring_index_new = observation / self.maze_dim[1]
+            if ring_index_new < ring_index_old:  # move closer
+                reward += 5.0
+            elif ring_index_new > ring_index_old:
+                reward -= 5.0
+
+            # step 4.2: Determine if the angle gets closer
+            fan_index_new = observation % self.maze_dim[1]
+            if min((fan_index_new - 0), (11 - fan_index_new)) < min((fan_index_old - 0), (11 - fan_index_old)):
+                reward += 5.0
+            elif min((fan_index_new - 0), (11 - fan_index_new)) > min((fan_index_old - 0), (11 - fan_index_old)):
+                reward -= 5.0
+
+        # step 5: Determine if the terminal condition has been met.
         dist = np.sqrt((self.current_state.pose.position.x -
                         self.target_position[0])**2 + (self.current_state.pose.position.y - self.target_position[1])**2)
         if dist <= self.end_radius:
@@ -386,8 +389,11 @@ class GazeboEnvironment(BaseEnvironment):
             is_terminal = True
             print 'Succeed!!!!!'
 
-        self.reward_obs_term = [reward, self.get_observation(
-            self.current_state, self.target_position), is_terminal]
+        # step 6： give -1 when no other reward is given, make sure the agent will find the shortest path.
+        if reward == 0:
+            reward = -1
+
+        self.reward_obs_term = [reward, observation, is_terminal]
 
         print 'reward_obs_term =', self.reward_obs_term
         return self.reward_obs_term
@@ -418,7 +424,8 @@ if __name__ == "__main__":
     # command = Twist()
     # command.angular.z = -90 * math.pi / 180  # from radians to degrees
     # command.linear.x = -0.6
-    env.env_init()
+    env_info = {"end_radius": 0.05, "target_x": 0.0, "target_y": 1.0}
+    env.env_init(env_info)
     env.env_start()
     while True:
         # input() 在Python2和Python3中的含义不同
