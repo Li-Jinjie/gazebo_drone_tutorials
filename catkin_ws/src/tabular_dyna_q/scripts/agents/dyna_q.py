@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-03 19:52:27
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-03 22:56:20
+@LastEditTime : 2020-05-10 08:44:55
 @Units        : None
 @Description  : The implementation code of dyna-q algorithm
 @Dependencies : None
@@ -126,24 +126,24 @@ class DynaQAgent(BaseAgent):
         ### END CODE HERE ###
 
     def argmax(self, q_values):
-    """argmax with random tie-breaking
-    Args:
-        q_values (Numpy array): the array of action values
-    Returns:
-        action (int): an action with the highest value
-    """
-    top = float("-inf")
-    ties = []
+        """argmax with random tie-breaking
+        Args:
+            q_values (Numpy array): the array of action values
+        Returns:
+            action (int): an action with the highest value
+        """
+        top = float("-inf")
+        ties = []
 
-    for i in range(len(q_values)):
-        if q_values[i] > top:
-            top = q_values[i]
-            ties = []
+        for i in range(len(q_values)):
+            if q_values[i] > top:
+                top = q_values[i]
+                ties = []
 
-        if q_values[i] == top:
-            ties.append(i)
+            if q_values[i] == top:
+                ties.append(i)
 
-    return self.rand_generator.choice(ties)
+        return self.rand_generator.choice(ties)
 
     def choose_action_egreedy(self, state):
         """returns an action using an epsilon-greedy policy w.r.t. the current action-value function.

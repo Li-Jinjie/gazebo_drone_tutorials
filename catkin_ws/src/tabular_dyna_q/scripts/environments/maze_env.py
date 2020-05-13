@@ -1,8 +1,12 @@
 #!/usr/bin/env python
+'''
+Description: This file is an example of Environment class.
+'''
 
 from environment import BaseEnvironment
 
 import numpy as np
+
 
 class MazeEnvironment(BaseEnvironment):
     """Implements the environment for an RLGlue environment
@@ -15,7 +19,8 @@ class MazeEnvironment(BaseEnvironment):
     def __init__(self):
 
         self.maze_dim = [6, 9]
-        self.obstacles = [[1, 2], [2, 2], [3, 2], [4, 5], [0, 7], [1, 7], [2, 7]]
+        self.obstacles = [[1, 2], [2, 2], [3, 2],
+                          [4, 5], [0, 7], [1, 7], [2, 7]]
 
         self.start_state = [2, 0]
         self.end_state = [0, 8]
@@ -83,27 +88,28 @@ class MazeEnvironment(BaseEnvironment):
         col = self.current_state[1]
 
         # update current_state with the action (also check validity of action)
-        if action == 0: # up
+        if action == 0:  # up
             if not (self.out_of_bounds(row-1, col) or self.is_obstacle(row-1, col)):
                 self.current_state = [row-1, col]
 
-        elif action == 1: # right
+        elif action == 1:  # right
             if not (self.out_of_bounds(row, col+1) or self.is_obstacle(row, col+1)):
                 self.current_state = [row, col+1]
 
-        elif action == 2: # down
+        elif action == 2:  # down
             if not (self.out_of_bounds(row+1, col) or self.is_obstacle(row+1, col)):
                 self.current_state = [row+1, col]
 
-        elif action == 3: # left
+        elif action == 3:  # left
             if not (self.out_of_bounds(row, col-1) or self.is_obstacle(row, col-1)):
                 self.current_state = [row, col-1]
 
-        if self.current_state == self.end_state: # terminate if goal is reached
+        if self.current_state == self.end_state:  # terminate if goal is reached
             reward = 1.0
             is_terminal = True
 
-        self.reward_obs_term = [reward, self.get_observation(self.current_state), is_terminal]
+        self.reward_obs_term = [reward, self.get_observation(
+            self.current_state), is_terminal]
 
         return self.reward_obs_term
 
@@ -127,8 +133,6 @@ class MazeEnvironment(BaseEnvironment):
         return "I don't know how to respond to your message"
 
 
-
-
 class ShortcutMazeEnvironment(BaseEnvironment):
     """Implements the environment for an RLGlue environment
 
@@ -139,11 +143,12 @@ class ShortcutMazeEnvironment(BaseEnvironment):
 
     def __init__(self):
 
-        self.maze_dim = [6,9]
-        self.obstacles = [[3,1],[3,2],[3,3],[3,4],[3,5],[3,6],[3,7],[3,8]]
+        self.maze_dim = [6, 9]
+        self.obstacles = [[3, 1], [3, 2], [3, 3], [
+            3, 4], [3, 5], [3, 6], [3, 7], [3, 8]]
 
-        self.start_state = [5,3]
-        self.end_state = [0,8]
+        self.start_state = [5, 3]
+        self.end_state = [0, 8]
         self.current_state = [None, None]
 
         # a shortcut opens up after n timesteps
@@ -216,27 +221,28 @@ class ShortcutMazeEnvironment(BaseEnvironment):
         col = self.current_state[1]
 
         # update current_state with the action (also check validity of action)
-        if action == 0: # up
+        if action == 0:  # up
             if not (self.out_of_bounds(row-1, col) or self.is_obstacle(row-1, col)):
                 self.current_state = [row-1, col]
 
-        elif action == 1: # right
+        elif action == 1:  # right
             if not (self.out_of_bounds(row, col+1) or self.is_obstacle(row, col+1)):
                 self.current_state = [row, col+1]
 
-        elif action == 2: # down
+        elif action == 2:  # down
             if not (self.out_of_bounds(row+1, col) or self.is_obstacle(row+1, col)):
                 self.current_state = [row+1, col]
 
-        elif action == 3: # left
+        elif action == 3:  # left
             if not (self.out_of_bounds(row, col-1) or self.is_obstacle(row, col-1)):
                 self.current_state = [row, col-1]
 
-        if self.current_state == self.end_state: # terminate if goal is reached
+        if self.current_state == self.end_state:  # terminate if goal is reached
             reward = 1.0
             is_terminal = True
 
-        self.reward_obs_term = [reward, self.get_observation(self.current_state), is_terminal]
+        self.reward_obs_term = [reward, self.get_observation(
+            self.current_state), is_terminal]
 
         return self.reward_obs_term
 

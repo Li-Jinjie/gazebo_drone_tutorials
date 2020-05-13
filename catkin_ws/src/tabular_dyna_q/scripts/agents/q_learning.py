@@ -2,23 +2,22 @@
 # coding=utf-8
 '''
 @Author       : LI Jinjie
-@Date         : 2020-05-03 17:46:43
+@Date         : 2020-05-03 17:42:04
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-08 09:44:59
+@LastEditTime : 2020-05-07 13:01:26
 @Units        : None
-@Description  : The implementation code of Expected Sarsa algorithm
+@Description  : The implementation code of q-learning algorithm
 @Dependencies : None
 @NOTICE       : None
 '''
-
 import numpy as np
 from template_agent import BaseAgent
 
 
-# Expected Sarsa agent here
+# Q-Learning agent here
 
 
-class ExpectedSarsaAgent(BaseAgent):
+class QLearningAgent(BaseAgent):
     def agent_init(self, agent_init_info):
         """Setup for the agent called when the experiment first starts.
 
@@ -83,21 +82,11 @@ class ExpectedSarsaAgent(BaseAgent):
         else:
             action = self.argmax(current_q)
 
-        # Perform an update (~5 lines)
+        # Perform an update (1 line)
         ### START CODE HERE ###
-        pi = np.ones(self.num_actions) * (self.epsilon / self.num_actions)
-        num_q_max = sum(current_q == max(current_q))
-        pi[current_q == max(current_q)] = (1 - self.epsilon) / \
-            num_q_max + (self.epsilon / self.num_actions)
-
-        value = 0
-        for a in range(self.num_actions):
-            value += pi[a] * self.q[state, a]
-
         self.q[self.prev_state, self.prev_action] += self.step_size * \
-            (reward + self.discount * value -
-             self.q[self.prev_state, self.prev_action])
-
+            (reward + self.discount *
+             max(self.q[state, :]) - self.q[self.prev_state, self.prev_action])
         ### END CODE HERE ###
 
         self.prev_state = state
