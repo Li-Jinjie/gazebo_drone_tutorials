@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-04 18:48:56
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-07 22:15:55
+@LastEditTime : 2020-05-15 15:34:33
 @Units        : Meter, radian (if no description)
 @Description  : env类，与gazebo联动
 @Dependencies : None
@@ -33,29 +33,6 @@ class GazeboEnvironment(BaseEnvironment):
         methods.
     """
 
-    # def __init__(self):
-
-    #     # initialize
-    #     # 感觉应该在这里把用到的变量说明一下
-
-    #     # -----------Default Robot State-----------------------
-    #     self.robot_name = None
-
-    #     self.init_robot_state = ModelState()
-    #     # ----------- Parameters in RL env class -----------
-    #     self.maze_dim = [11, 11]
-    #     # coordination of the target point.
-    #     self.target_position = (None, None, None)
-    #     self.end_radius = None  # meters
-    #     # The robot's pose and twist infomation under world frame
-    #     self.current_state = None
-
-    # 这些None都不占存储空间，表示占了个坑
-    #     reward = None
-    #     observation = None
-    #     termination = None
-    #     self.reward_obs_term = [reward, observation, termination]
-
     def env_init(self, env_info):
         """Setup for the environment called when the experiment first starts.
 
@@ -70,7 +47,20 @@ class GazeboEnvironment(BaseEnvironment):
             print "Error: 初始化节点失败，检查gazebo环境是否提前运行。"
 
         # -----------Default Robot State-----------------------
-        self.robot_name = 'uav1'
+        self.randomFlag = env_info.get('random_flag', False)
+        self.robot_name = env_info.get('robot_name', 'uav1')
+        self.target_x = env_info.get('target_x', 1.0)
+        self.target_y = env_info.get('target_y', 1.0)
+
+        # if self.randomFlag == True:
+        #     self.target_x = np.random.rand() * 3.6 - 1.8
+        #     self.target_y = np.random.rand() * 3.6 - 1.8
+        #     print 'random_x = ', self.target_x, 'random_y = ', self.target_y
+        # flag = np.random.randint(2)
+        # if flag == 0:
+        #     self.target_y = + np.sqrt(1.5 ** 2 - self.target_x ** 2)
+        # else:
+        #     self.target_y = - np.sqrt(1.5 ** 2 - self.target_x ** 2)
 
         self.init_robot_state = ModelState()
         self.init_robot_state.model_name = self.robot_name
@@ -95,7 +85,7 @@ class GazeboEnvironment(BaseEnvironment):
         origin = self.init_robot_state.pose.position
         # coordination of the target point.
         self.target_position = (
-            origin.x + env_info["target_x"], origin.y + env_info["target_y"], origin.z)
+            origin.x + self.target_x, origin.y + self.target_y, origin.z)
         # self.end_state = [0, 0]
         self.end_radius = env_info["end_radius"]  # meters
         # The robot's pose and twist infomation under world frame
@@ -180,6 +170,18 @@ class GazeboEnvironment(BaseEnvironment):
         Returns:
             The first state observation from the environment.
         """
+        # set the random target position
+        if self.randomFlag == True:
+            self.target_x = np.random.rand() * 3.6 - 1.8
+            self.target_x = round(self.target_x, 1)
+            self.target_y = np.random.rand() * 3.6 - 1.8
+            self.target_y = round(self.target_y, 1)
+
+            origin = self.init_robot_state.pose.position
+            self.target_position = (
+                origin.x + self.target_x, origin.y + self.target_y, origin.z)
+            print 'target_position = ', self.target_position
+
         # reset the current state = init_state
         self.set_robot_state(self.init_robot_state)
         self.reward_obs_term[1] = self.get_observation(
@@ -434,26 +436,3 @@ if __name__ == "__main__":
         else:
             a_index = int(t)
         env.env_step(a_index)
-
-    # rospy.spin()
-
-    # env.set_robot_state(env.init_robot_state)
-    # env.get_observation(env.current_state, env.target_position)
-    # for i in range(10):
-    #     x = np.random.rand() * 3 - 1.5
-    #     y = np.random.rand() * 3 - 1.5
-    #     print 'x,y =', x, y
-    #     state = env.get_polar_coor(x, y)
-    #     print 'state =', state
-    #     print 'state_int =', state[0] * 11 + state[1]
-
-    # try:
-    #     env.set_robot_state(env.init_robot_state)
-    #     # testObj.publish_cmd(command)
-    #     # rate = rospy.Rate(1)  # 10hz
-    #     # while not rospy.is_shutdown():
-    #     #     command_new = testObj.trans_command(command)
-    #     #     testObj.pub_command.publish(command_new)
-    #     #     rospy.sleep(5)
-    # except rospy.ROSInterruptException:
-    #     pass

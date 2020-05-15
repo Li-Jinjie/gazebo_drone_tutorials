@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-03 19:52:27
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-10 08:44:55
+@LastEditTime : 2020-05-14 22:25:41
 @Units        : None
 @Description  : The implementation code of dyna-q algorithm
 @Dependencies : None
@@ -245,3 +245,16 @@ class DynaQAgent(BaseAgent):
         self.update_model(self.past_state, self.past_action, -1, reward)
         self.planning_step()
         ### END CODE HERE ###
+
+    def agent_cleanup(self):
+        """Cleanup done after the agent ends."""
+        pass
+
+    def agent_message(self, message):
+        """A function used to pass information from the agent to the experiment.
+        Args:
+            message: The message passed to the agent.
+        Returns:
+            The response (or answer) to the message.
+        """
+        pass
