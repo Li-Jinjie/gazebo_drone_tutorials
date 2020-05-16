@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-07 10:18:06
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-16 09:38:52
+@LastEditTime : 2020-05-16 11:10:32
 @Units        : None
 @Description  : The usage of q-table to control the uav flying to the target
 @Dependencies : None
@@ -13,6 +13,7 @@
 import os
 import sys
 import time
+import re
 import numpy as np
 import rospy
 from geometry_msgs.msg import Vector3
@@ -22,8 +23,11 @@ from rl_glue import RLGlue
 
 
 def callback(data):
-    '''The callback function of this subscriber
+    '''The callback function of this subscriber.
+    data is based on the leader frame: uav1 frame
     '''
+    # 坐标变换
+
     if (data.x == rl_glue.environment.target_x) and (data.y == rl_glue.environment.target_y):
         return
 
@@ -44,7 +48,8 @@ def callback(data):
 
 if __name__ == "__main__":
     # initialization
-    name = rospy.get_namespace()
+    ns = rospy.get_namespace()
+    name = re.findall(r'/(.*)/', ns)[0]
     # name = 'uav1'
 
     agent = AgentCompleted
@@ -62,7 +67,7 @@ if __name__ == "__main__":
 
     # rospy.init_node('q_table_controller', anonymous=False)
     # 在gazebo_env节点里已经包含了init了节点
-    rospy.Subscriber(name+'/rl_cmd', Vector3, callback)
+    rospy.Subscriber('rl_cmd', Vector3, callback)
     rospy.spin()
 
     # while True:

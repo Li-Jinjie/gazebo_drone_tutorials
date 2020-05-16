@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-04 18:48:56
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-16 09:08:30
+@LastEditTime : 2020-05-16 11:05:49
 @Units        : Meter, radian (if no description)
 @Description  : env类，与gazebo联动
 @Dependencies : None
@@ -53,6 +53,8 @@ class GazeboEnvironmentCommpleted(BaseEnvironment):
         self.target_x = env_info.get('target_x', 0.0)
         self.target_y = env_info.get('target_y', 0.0)
 
+        self.leader_name = 'uav1'
+
         self.init_robot_state = ModelState()
         self.init_robot_state.model_name = self.robot_name
         self.init_robot_state.pose.position.x = 0.0
@@ -78,8 +80,11 @@ class GazeboEnvironmentCommpleted(BaseEnvironment):
 
         # self.end_state = [0, 0]
         self.end_radius = env_info["end_radius"]  # meters
-        # The robot's pose and twist infomation under world frame
+        # The robot's pose and twist information under world frame
         self.current_state = ModelState()
+        # The leader's pose and twist information under world frame
+        if self.leader_name != self.robot_name:
+            self.leader_state = ModelState()
 
         # -----------Publisher and Subscriber-------------
         self.sub_state = rospy.Subscriber(
@@ -89,7 +94,7 @@ class GazeboEnvironmentCommpleted(BaseEnvironment):
             '/gazebo/set_model_state', ModelState, queue_size=10)
 
         self.pub_command = rospy.Publisher(
-            '/uav1/pose_cmd', Twist, queue_size=10)
+            rospy.get_namespace()+'pose_cmd', Twist, queue_size=10)
 
         rospy.sleep(2.)
         # # What function to call when you ctrl + c
@@ -106,6 +111,15 @@ class GazeboEnvironmentCommpleted(BaseEnvironment):
         self.current_state.pose = States.pose[index]
         self.current_state.twist = States.twist[index]
         self.current_state.reference_frame = 'world'
+
+        # if not leader
+        if self.leader_name != self.robot_name:
+            leader_index = States.name.index(self.leader_name)
+            self.leader_state.model_name = self.leader_name
+            self.leader_state.pose = States.pose[leader_index]
+            self.leader_state.twist = States.twist[leader_index]
+            self.leader_state.reference_frame = 'world'
+
         # print self.current_state
 
     def set_robot_state(self, state):

@@ -4,7 +4,7 @@
  # @Author       : GUO ZhengLong, LI Jinjie
  # @Date         : 2020-03-06 15:26:32
  # @LastEditors  : LI Jinjie
- # @LastEditTime : 2020-05-16 08:53:44
+ # @LastEditTime : 2020-05-16 10:01:09
  # @Units        : None
  # @Description  : file content
  # @Dependencies : None
@@ -32,11 +32,13 @@ roslaunch hector_quadrotor_gazebo spawn_quadrotor_with_downward_cam.launch &
 sleep 5
 echo "==================================="
 sleep 1
-echo "apriltag_ros node is running..."
+echo "apriltag_ros node is running......"
 sleep 1
-echo "ekf_localization_node is running..."
+echo "ekf_localization_node is running......"
 sleep 1
 echo "prepare_tags_info_node is running......"
+sleep 1
+echo "tabular_q_control is running......"
 sleep 1
 echo "==================================="
 
