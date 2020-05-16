@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-04 18:48:56
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-15 16:40:27
+@LastEditTime : 2020-05-16 09:08:30
 @Units        : Meter, radian (if no description)
 @Description  : env类，与gazebo联动
 @Dependencies : None
@@ -25,7 +25,7 @@ import numpy as np
 import math
 
 
-class GazeboEnvironment(BaseEnvironment):
+class GazeboEnvironmentCommpleted(BaseEnvironment):
     """Implements the environment for an RLGlue environment
 
     Note:
@@ -42,7 +42,8 @@ class GazeboEnvironment(BaseEnvironment):
         """
         # initialize
         try:
-            rospy.init_node('Gazebo_Env', anonymous=False)
+            name = 'gazebo_env'
+            rospy.init_node(name, anonymous=False)
         except rospy.ROSInitException:
             print "Error: 初始化节点失败，检查gazebo环境是否提前运行。"
 
@@ -72,10 +73,8 @@ class GazeboEnvironment(BaseEnvironment):
         # ----------- Parameters in RL env class -----------
         self.maze_dim = [11, 11]
 
-        origin = self.init_robot_state.pose.position
-        # coordination of the target point.
         self.target_position = (
-            origin.x + self.target_x, origin.y + self.target_y, origin.z)
+            self.target_x, self.target_y, self.init_robot_state.pose.position.z)
 
         # self.end_state = [0, 0]
         self.end_radius = env_info["end_radius"]  # meters
@@ -161,20 +160,25 @@ class GazeboEnvironment(BaseEnvironment):
         Returns:
             The first state observation from the environment.
         """
-        # set the random target position
-        if self.randomFlag == True:
-            self.target_x = np.random.rand() * 3.6 - 1.8
-            self.target_x = round(self.target_x, 1)
-            self.target_y = np.random.rand() * 3.6 - 1.8
-            self.target_y = round(self.target_y, 1)
+        # # set the random target position
+        # if self.randomFlag == True:
+        #     self.target_x = np.random.rand() * 3.6 - 1.8
+        #     self.target_x = round(self.target_x, 1)
+        #     self.target_y = np.random.rand() * 3.6 - 1.8
+        #     self.target_y = round(self.target_y, 1)
 
-            origin = self.init_robot_state.pose.position
-            self.target_position = (
-                origin.x + self.target_x, origin.y + self.target_y, origin.z)
-            print 'target_position = ', self.target_position
+        #     origin = self.init_robot_state.pose.position
+        #     self.target_position = (
+        #         origin.x + self.target_x, origin.y + self.target_y, origin.z)
+        #     print 'target_position = ', self.target_position
 
         # reset the current state = init_state
-        self.set_robot_state(self.init_robot_state)
+        # self.set_robot_state(self.init_robot_state)
+
+        # no reset the robot state, change the target along with target_x and target_y set by outer program
+        self.target_position = (
+            self.target_x, self.target_y, self.init_robot_state.pose.position.z)
+
         self.reward_obs_term[1] = self.get_observation(
             self.current_state, self.target_position)
         return self.reward_obs_term[1]

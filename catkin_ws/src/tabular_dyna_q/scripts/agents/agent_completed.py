@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-03 17:42:04
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-15 15:33:32
+@LastEditTime : 2020-05-15 17:06:35
 @Units        : None
 @Description  : The agent whose actions depend totally on the q table.
 @Dependencies : None
@@ -17,7 +17,14 @@ from template_agent import BaseAgent
 # Q-Learning agent here
 
 
-class QLearningAgent(BaseAgent):
+class AgentCompleted(BaseAgent):
+    """Implements the agent for an RLGlue environment
+
+    Note:
+        env_init, env_start, env_step, env_cleanup, and env_message are required
+        methods.
+    """
+
     def agent_init(self, agent_init_info):
         """Setup for the agent called when the experiment first starts.
 
@@ -34,7 +41,7 @@ class QLearningAgent(BaseAgent):
             'q_path', "/home/ljj/gazebo_drone_tutorials/catkin_ws/src/tabular_dyna_q/scripts/results/DynaQ_table_r1_e150.npy")
 
         # The array of action-value estimates.
-        self.q = np.load(q_path)
+        self.q = np.load(self.q_path)
 
     def agent_start(self, state):
         """The first method called when the episode starts, called after
@@ -95,7 +102,8 @@ class QLearningAgent(BaseAgent):
             if q_values[i] == top:
                 ties.append(i)
 
-        return self.rand_generator.choice(ties)
+        # return self.rand_generator.choice(ties)
+        return np.random.choice(ties)
 
     def agent_cleanup(self):
         """Cleanup done after the agent ends."""
