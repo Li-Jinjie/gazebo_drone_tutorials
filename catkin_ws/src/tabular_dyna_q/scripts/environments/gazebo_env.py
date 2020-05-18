@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-04 18:48:56
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-15 16:40:27
+@LastEditTime : 2020-05-18 10:46:42
 @Units        : Meter, radian (if no description)
 @Description  : env类，与gazebo联动
 @Dependencies : None
@@ -322,6 +322,48 @@ class GazeboEnvironment(BaseEnvironment):
 
         return cmd
 
+    def get_reward_from_obs(self, observation):
+        '''input: the observation of target seek task
+        output: reward and is_terminal flag
+        '''
+        reward = 0.0
+        is_terminal = False
+
+        ring_index_old = self.reward_obs_term[1] / self.maze_dim[1]
+        ring_index_new = None
+
+        fan_index_old = self.reward_obs_term[1] % self.maze_dim[1]
+        fan_index_new = None
+
+        # step 1.1: Determine if the position gets closer
+        if reward == 0:
+            ring_index_new = observation / self.maze_dim[1]
+            if ring_index_new < ring_index_old:  # move closer
+                reward += 5.0
+            elif ring_index_new > ring_index_old:
+                reward -= 5.0
+
+            # step 1.2: Determine if the angle gets closer
+            fan_index_new = observation % self.maze_dim[1]
+            if min((fan_index_new - 0), (11 - fan_index_new)) < min((fan_index_old - 0), (11 - fan_index_old)):
+                reward += 5.0
+            elif min((fan_index_new - 0), (11 - fan_index_new)) > min((fan_index_old - 0), (11 - fan_index_old)):
+                reward -= 5.0
+
+        # step 2: Determine if the terminal condition has been met.
+        dist = np.sqrt((self.current_state.pose.position.x -
+                        self.target_position[0])**2 + (self.current_state.pose.position.y - self.target_position[1])**2)
+        if dist <= self.end_radius:
+            reward = 50.0
+            is_terminal = True
+            print 'Succeed!!!!!'
+
+        # step 3： give -1 when no other reward is given, make sure the agent will find the shortest path.
+        if reward == 0:
+            reward = -1
+
+        return reward, is_terminal
+
     def env_step(self, action_index):
         """A step taken by the environment.
 
@@ -332,14 +374,6 @@ class GazeboEnvironment(BaseEnvironment):
             (float, state, Boolean): a tuple of the reward, state observation,
                 and boolean indicating if it's terminal.
         """
-        reward = 0.0
-        is_terminal = False
-
-        ring_index_old = self.reward_obs_term[1] / self.maze_dim[1]
-        ring_index_new = None
-
-        fan_index_old = self.reward_obs_term[1] % self.maze_dim[1]
-        fan_index_new = None
 
         # # step 1: get action
         cmd = self.get_action_from_index(action_index)
@@ -355,35 +389,12 @@ class GazeboEnvironment(BaseEnvironment):
             # print 'action_index =', action_index
             self.send_cmd_until_stop(cmd_transferred, transfer_flag=False)
 
+        # step4: get the observation (RL state) based on the relative position
         observation = self.get_observation(
             self.current_state, self.target_position)
 
-        # step 4.1: Determine if the position gets closer
-        if reward == 0:
-            ring_index_new = observation / self.maze_dim[1]
-            if ring_index_new < ring_index_old:  # move closer
-                reward += 5.0
-            elif ring_index_new > ring_index_old:
-                reward -= 5.0
-
-            # step 4.2: Determine if the angle gets closer
-            fan_index_new = observation % self.maze_dim[1]
-            if min((fan_index_new - 0), (11 - fan_index_new)) < min((fan_index_old - 0), (11 - fan_index_old)):
-                reward += 5.0
-            elif min((fan_index_new - 0), (11 - fan_index_new)) > min((fan_index_old - 0), (11 - fan_index_old)):
-                reward -= 5.0
-
-        # step 5: Determine if the terminal condition has been met.
-        dist = np.sqrt((self.current_state.pose.position.x -
-                        self.target_position[0])**2 + (self.current_state.pose.position.y - self.target_position[1])**2)
-        if dist <= self.end_radius:
-            reward = 50.0
-            is_terminal = True
-            print 'Succeed!!!!!'
-
-        # step 6： give -1 when no other reward is given, make sure the agent will find the shortest path.
-        if reward == 0:
-            reward = -1
+        # step5: get reward and is_terminal flag
+        reward, is_terminal = self.get_reward_from_obs(observation)
 
         self.reward_obs_term = [reward, observation, is_terminal]
 
