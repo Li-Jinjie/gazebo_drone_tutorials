@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-04 18:48:56
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-18 18:07:29
+@LastEditTime : 2020-05-18 22:58:55
 @Units        : Meter, radian (if no description)
 @Description  : env类，与gazebo联动,可生成避障(colision avoidance, COL)与目标追踪(target seek, TGT)两个任务对应的状态
 @Dependencies : None
@@ -74,7 +74,7 @@ class GazeboEnvironment2(BaseEnvironment):
         # ----------- Parameters in RL env class -----------
         self.maze_dim_TGT = {'num_fan': 11,
                              'num_ring': 11}   # num_fan, num_ring
-        self.maze_dim_COL = {'num_fan': 8, 'num_ring': 5}
+        self.maze_dim_COL = {'num_fan': 9, 'num_ring': 5}
 
         origin = self.init_robot_state.pose.position
         # coordination of the target point.
@@ -200,7 +200,7 @@ class GazeboEnvironment2(BaseEnvironment):
     # check if current state is within the gridworld and return bool
     def out_of_bounds(self, cmd_transferred, current_state, target_position, rl_state):
         '''Determine if the action could be executed
-        # Input: cmd_transferred: Twist(), current_state: ModelState(), 
+        # Input: cmd_transferred: Twist(), current_state: ModelState(),
         target_position: tuple(3), rl_state: int
         # Output: Boolean
         '''
@@ -312,12 +312,14 @@ class GazeboEnvironment2(BaseEnvironment):
         state = [0, 0]  # ring, fan
         dis_borders = [(0.0, 0.5), (0.5, 0.6), (0.6, 0.7),
                        (0.7, 0.8), (0.8, 0.9)]
-        degree_borders = [(0, 45), (45, 90), (90, 135), (135, 180),
-                          (-180, -135), (-135, -90), (-90, -45), (-45, 0)]
+        degree_borders = [(-15, 15), (15, 45), (45, 90), (90, 135), (135, 180),
+                          (-180, -135), (-135, -90), (-90, -45), (-45, -15)]
 
         distance = np.sqrt(x ** 2 + y ** 2)
         if distance > 0.9:
             state[0] = 4
+            # out_of_border_flag = True
+
         else:
             for i, (down, up) in enumerate(dis_borders):
                 if distance >= down and distance < up:
@@ -339,7 +341,7 @@ class GazeboEnvironment2(BaseEnvironment):
                 state[1] = i
                 break
 
-        print 'COL ring, fan: ', state
+        # print 'COL ring, fan: ', state
         return state
 
     def coor_trans(self, command, current_state):
@@ -423,9 +425,12 @@ class GazeboEnvironment2(BaseEnvironment):
 
             # step 2: Determine if the angle gets closer
             fan_index_new = observation % self.maze_dim_TGT['num_fan']
-            if min((fan_index_new - 0), (11 - fan_index_new)) < min((fan_index_old - 0), (11 - fan_index_old)):
+
+            # 状态1和状态10到状态0的距离都为1
+            max_fan_index = self.maze_dim_TGT['num_fan']
+            if min((fan_index_new - 0), (max_fan_index - fan_index_new)) < min((fan_index_old - 0), (max_fan_index - fan_index_old)):
                 reward += 5.0
-            elif min((fan_index_new - 0), (11 - fan_index_new)) > min((fan_index_old - 0), (11 - fan_index_old)):
+            elif min((fan_index_new - 0), (max_fan_index - fan_index_new)) > min((fan_index_old - 0), (max_fan_index - fan_index_old)):
                 reward -= 5.0
 
         # step 3: Determine if the terminal condition has been met.
@@ -448,6 +453,25 @@ class GazeboEnvironment2(BaseEnvironment):
         '''
         reward = 0.0
         is_terminal = False
+
+        ring_index_old = self.reward_obs_term['COL'][1] / \
+            self.maze_dim_COL['num_fan']
+        ring_index_new = observation / self.maze_dim_COL['num_fan']
+
+        fan_index_old = self.reward_obs_term['COL'][1] % self.maze_dim_COL['num_fan']
+        fan_index_new = observation % self.maze_dim_COL['num_fan']
+
+        # 飞到更外圈，+5
+        if ring_index_new > ring_index_old:
+            reward += 5
+
+        # 状态1和状态8到状态0的距离都为1. 前方原理障碍物， +5； 否则-5
+        max_fan_index = self.maze_dim_COL['num_fan']
+
+        if min((fan_index_new - 0), (max_fan_index - fan_index_new)) < min((fan_index_old - 0), (11 - fan_index_old)):
+            reward -= 5.0
+        elif min((fan_index_new - 0), (11 - fan_index_new)) > min((fan_index_old - 0), (11 - fan_index_old)):
+            reward += 5.0
 
         # in the innerest circle
         if observation <= 7:
@@ -502,11 +526,15 @@ class GazeboEnvironment2(BaseEnvironment):
         reward_COL, is_terminal_COL = self.get_reward_from_obs_COL(
             observation_COL)
 
+        # 为了让碰到障碍物和到达目标点都结束
+        if is_terminal == True:
+            is_terminal_COL = True
+
         self.reward_obs_term['COL'] = [
             reward_COL, observation_COL, is_terminal_COL]
 
-        print "reward_obs_term['COL'] =", self.reward_obs_term['COL']
-        return self.reward_obs_term
+        # print "reward_obs_term['COL'] =", self.reward_obs_term['COL']
+        return self.reward_obs_term['COL']
 
     def env_cleanup(self):
         """Cleanup done after the environment ends"""

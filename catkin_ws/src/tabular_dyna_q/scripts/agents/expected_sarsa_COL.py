@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-18 17:52:10
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-18 17:52:11
+@LastEditTime : 2020-05-18 23:32:18
 @Units        : None
 @Description  : This agent has TGT and COL two agent
 @Dependencies : None
@@ -18,7 +18,7 @@ from template_agent import BaseAgent
 # Expected Sarsa agent here
 
 
-class ExpectedSarsaAgent(BaseAgent):
+class ExpectedSarsaAgentCOL(BaseAgent):
     def agent_init(self, agent_init_info):
         """Setup for the agent called when the experiment first starts.
 
@@ -39,12 +39,16 @@ class ExpectedSarsaAgent(BaseAgent):
         self.epsilon = agent_init_info["epsilon"]
         self.step_size = agent_init_info["step_size"]
         self.discount = agent_init_info["discount"]
+        q_path_TGT = agent_init_info.get(
+            'q_path', "/home/ljj/gazebo_drone_tutorials/catkin_ws/src/tabular_dyna_q/scripts/results/DynaQ_table_r1_e150.npy")
         self.rand_generator = np.random.RandomState(agent_init_info["seed"])
 
         # Create an array for action-value estimates and initialize it to zero.
         # The array of action-value estimates.
-        self.q = np.zeros((self.num_states, self.num_actions))
-        self.
+        self.q_COL = np.zeros((self.num_states, self.num_actions))
+        self.q_TGT = np.load(q_path_TGT)
+
+        self.state_TGT = None
 
     def agent_start(self, state):
         """The first method called when the episode starts, called after
@@ -55,14 +59,22 @@ class ExpectedSarsaAgent(BaseAgent):
         Returns:
             action (int): the first action the agent takes.
         """
+        state_TGT = self.state_TGT
+        state_COL = state
 
         # Choose action using epsilon greedy.
-        current_q = self.q[state, :]
+        current_q_TGT = self.q_TGT[state_TGT, :]
+        current_q_COL = self.q_COL[state_COL, :]
+        # print 'current_q_TGT=', current_q_TGT
+        # print 'current_q_COL=', current_q_COL
+        # print 'q_sum=', current_q_TGT + current_q_COL
+
         if self.rand_generator.rand() < self.epsilon:
             action = self.rand_generator.randint(self.num_actions)
         else:
-            action = self.argmax(current_q)
-        self.prev_state = state
+            # get action from both q_tables
+            action = self.argmax(current_q_TGT + 5 * current_q_COL)
+        self.prev_state = state_COL
         self.prev_action = action
         return action
 
@@ -76,16 +88,23 @@ class ExpectedSarsaAgent(BaseAgent):
         Returns:
             action (int): the action the agent is taking.
         """
+        state_TGT = self.state_TGT
+        state_COL = state
+
+        print 'reward_COL', reward
 
         # Choose action using epsilon greedy.
-        current_q = self.q[state, :]
+        current_q_TGT = self.q_TGT[state_TGT, :]
+        current_q_COL = self.q_COL[state_COL, :]
+
         if self.rand_generator.rand() < self.epsilon:
             action = self.rand_generator.randint(self.num_actions)
         else:
-            action = self.argmax(current_q)
+            action = self.argmax(current_q_TGT + 5 * current_q_COL)
 
         # Perform an update (~5 lines)
         ### START CODE HERE ###
+        current_q = current_q_COL
         pi = np.ones(self.num_actions) * (self.epsilon / self.num_actions)
         num_q_max = sum(current_q == max(current_q))
         pi[current_q == max(current_q)] = (1 - self.epsilon) / \
@@ -93,15 +112,15 @@ class ExpectedSarsaAgent(BaseAgent):
 
         value = 0
         for a in range(self.num_actions):
-            value += pi[a] * self.q[state, a]
+            value += pi[a] * self.q_COL[state_COL, a]
 
-        self.q[self.prev_state, self.prev_action] += self.step_size * \
+        self.q_COL[self.prev_state, self.prev_action] += self.step_size * \
             (reward + self.discount * value -
-             self.q[self.prev_state, self.prev_action])
+             self.q_COL[self.prev_state, self.prev_action])
 
         ### END CODE HERE ###
 
-        self.prev_state = state
+        self.prev_state = state_COL
         self.prev_action = action
         return action
 
@@ -111,10 +130,11 @@ class ExpectedSarsaAgent(BaseAgent):
             reward (float): the reward the agent received for entering the
                 terminal state.
         """
+        print 'reward_COL', reward
         # Perform the last update in the episode (1 line)
         ### START CODE HERE ###
-        self.q[self.prev_state, self.prev_action] += self.step_size * \
-            (reward - self.q[self.prev_state, self.prev_action])
+        self.q_COL[self.prev_state, self.prev_action] += self.step_size * \
+            (reward - self.q_COL[self.prev_state, self.prev_action])
         ### END CODE HERE ###
 
     def argmax(self, q_values):
