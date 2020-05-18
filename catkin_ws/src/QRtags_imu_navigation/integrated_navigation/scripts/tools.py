@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-03-19 16:04:46
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-04 18:49:57
+@LastEditTime : 2020-05-16 17:53:55
 @Units        : ROS REP-103: https://www.ros.org/reps/rep-0103.html
 @Description  : This file defines the classes which are useful for integrated_navigation_node.py
 @Dependencies : None
@@ -89,6 +89,7 @@ class tags_sub:
         # now we apply the mathematical operation res=q*v*q'. We use this function for multiplication but internally it is just a complex multiplication operation.
         result = quaternion_multiply(quaternion_multiply(
             rot, vec), quaternion_conjugate(rot)) + [[t.x], [t.y], [t.z], [0]]
+
         # print 'Quaternion method', result[0:3]
 
         # 3. update the position
