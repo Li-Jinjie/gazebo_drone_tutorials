@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-04 18:48:56
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-18 10:46:42
+@LastEditTime : 2020-05-18 10:51:51
 @Units        : Meter, radian (if no description)
 @Description  : env类，与gazebo联动
 @Dependencies : None
@@ -322,7 +322,7 @@ class GazeboEnvironment(BaseEnvironment):
 
         return cmd
 
-    def get_reward_from_obs(self, observation):
+    def get_reward_from_obs(self, observation, out_flag):
         '''input: the observation of target seek task
         output: reward and is_terminal flag
         '''
@@ -335,7 +335,11 @@ class GazeboEnvironment(BaseEnvironment):
         fan_index_old = self.reward_obs_term[1] % self.maze_dim[1]
         fan_index_new = None
 
-        # step 1.1: Determine if the position gets closer
+        # step 0: Determine if the agent is out of the border
+        if out_flag == True:
+            reward = -10.0
+
+        # step 1: Determine if the position gets closer
         if reward == 0:
             ring_index_new = observation / self.maze_dim[1]
             if ring_index_new < ring_index_old:  # move closer
@@ -343,14 +347,14 @@ class GazeboEnvironment(BaseEnvironment):
             elif ring_index_new > ring_index_old:
                 reward -= 5.0
 
-            # step 1.2: Determine if the angle gets closer
+            # step 2: Determine if the angle gets closer
             fan_index_new = observation % self.maze_dim[1]
             if min((fan_index_new - 0), (11 - fan_index_new)) < min((fan_index_old - 0), (11 - fan_index_old)):
                 reward += 5.0
             elif min((fan_index_new - 0), (11 - fan_index_new)) > min((fan_index_old - 0), (11 - fan_index_old)):
                 reward -= 5.0
 
-        # step 2: Determine if the terminal condition has been met.
+        # step 3: Determine if the terminal condition has been met.
         dist = np.sqrt((self.current_state.pose.position.x -
                         self.target_position[0])**2 + (self.current_state.pose.position.y - self.target_position[1])**2)
         if dist <= self.end_radius:
@@ -358,7 +362,7 @@ class GazeboEnvironment(BaseEnvironment):
             is_terminal = True
             print 'Succeed!!!!!'
 
-        # step 3： give -1 when no other reward is given, make sure the agent will find the shortest path.
+        # step 4： give -1 when no other reward is given, make sure the agent will find the shortest path.
         if reward == 0:
             reward = -1
 
@@ -375,15 +379,16 @@ class GazeboEnvironment(BaseEnvironment):
                 and boolean indicating if it's terminal.
         """
 
-        # # step 1: get action
+        # step 1: get action
         cmd = self.get_action_from_index(action_index)
 
         # step 2: get the command under the map frame
         cmd_transferred = self.coor_trans(cmd, self.current_state)
 
         # step 3: Determine if the 'out of border' condition has been met and takes the action.
+        out_flag = False
         if self.out_of_bounds(cmd_transferred, self.current_state, self.target_position, self.reward_obs_term[1]):
-            reward = -10.0
+            out_flag = True
         else:
             # print 'cmd_transferred =', cmd_transferred
             # print 'action_index =', action_index
@@ -394,7 +399,7 @@ class GazeboEnvironment(BaseEnvironment):
             self.current_state, self.target_position)
 
         # step5: get reward and is_terminal flag
-        reward, is_terminal = self.get_reward_from_obs(observation)
+        reward, is_terminal = self.get_reward_from_obs(observation, out_flag)
 
         self.reward_obs_term = [reward, observation, is_terminal]
 

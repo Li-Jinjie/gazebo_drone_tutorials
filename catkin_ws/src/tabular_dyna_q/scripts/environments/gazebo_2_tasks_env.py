@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-04 18:48:56
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-18 10:13:33
+@LastEditTime : 2020-05-18 18:07:29
 @Units        : Meter, radian (if no description)
 @Description  : env类，与gazebo联动,可生成避障(colision avoidance, COL)与目标追踪(target seek, TGT)两个任务对应的状态
 @Dependencies : None
@@ -51,6 +51,8 @@ class GazeboEnvironment2(BaseEnvironment):
         self.robot_name = env_info.get('robot_name', 'uav1')
         self.target_x = env_info.get('target_x', 0.0)
         self.target_y = env_info.get('target_y', 0.0)
+        self.obstacle_x = env_info.get('obstacle_x', 1.0)
+        self.obstacle_y = env_info.get('obstacle_y', 1.0)
 
         self.init_robot_state = ModelState()
         self.init_robot_state.model_name = self.robot_name
@@ -70,12 +72,17 @@ class GazeboEnvironment2(BaseEnvironment):
         self.init_robot_state.reference_frame = 'world'
 
         # ----------- Parameters in RL env class -----------
-        self.maze_dim = [11, 11]
+        self.maze_dim_TGT = {'num_fan': 11,
+                             'num_ring': 11}   # num_fan, num_ring
+        self.maze_dim_COL = {'num_fan': 8, 'num_ring': 5}
 
         origin = self.init_robot_state.pose.position
         # coordination of the target point.
         self.target_position = (
             origin.x + self.target_x, origin.y + self.target_y, origin.z)
+
+        # coordination of the obstacle point.
+        self.obstacle_position = (self.obstacle_x, self.obstacle_y, origin.z)
 
         # self.end_state = [0, 0]
         self.end_radius = env_info["end_radius"]  # meters
@@ -96,7 +103,8 @@ class GazeboEnvironment2(BaseEnvironment):
         # # What function to call when you ctrl + c
         # rospy.on_shutdown(self.shutdown)
 
-        self.reward_obs_term = [0.0, None, False]
+        self.reward_obs_term = {
+            'TGT': [0.0, None, False], 'COL': [0.0, None, False]}
 
     def state_callback(self, States):
         '''The callback function of Subscriber: sub_state.
@@ -175,9 +183,19 @@ class GazeboEnvironment2(BaseEnvironment):
 
         # reset the current state = init_state
         self.set_robot_state(self.init_robot_state)
-        self.reward_obs_term[1] = self.get_observation_TGT(
+
+        # get_observation
+        self.reward_obs_term['TGT'][1] = self.get_observation_TGT(
             self.current_state, self.target_position)
-        return self.reward_obs_term[1]
+
+        self.reward_obs_term['COL'][1] = self.get_observation_COL(
+            self.current_state, self.obstacle_position)
+
+        # print 'TGT_state, COL_state', (
+        #     self.reward_obs_term['TGT'][1], self.reward_obs_term['COL'][1])
+
+        # return RL state
+        return self.reward_obs_term['COL'][1]
 
     # check if current state is within the gridworld and return bool
     def out_of_bounds(self, cmd_transferred, current_state, target_position, rl_state):
@@ -198,13 +216,6 @@ class GazeboEnvironment2(BaseEnvironment):
                 return False
         else:
             return False
-
-    # check if there is an obstacle at (row, col)
-    # def is_obstacle(self, row, col):
-    #     if [row, col] in self.obstacles:
-    #         return True
-    #     else:
-    #         return False
 
     def get_observation_TGT(self, robot_state, target_position):
         '''
@@ -230,10 +241,10 @@ class GazeboEnvironment2(BaseEnvironment):
         # get RL state
         state = self.get_polar_coor_TGT(
             relative_coor_base[0], relative_coor_base[1])
-        return state[0] * self.maze_dim[1] + state[1]
+        return state[0] * self.maze_dim_TGT['num_fan'] + state[1]
 
     def get_polar_coor_TGT(self, x, y):
-        '''get the polar coordinate of Rectangular coordinate (x,y)
+        '''get the polar coordinate of Rectangular coordinate (x,y) in the target seek mission
         '''
         state = [0, 0]  # ring, fan
         dis_borders = [(0.0, 0.05), (0.05, 0.1), (0.1, 0.2),
@@ -267,6 +278,68 @@ class GazeboEnvironment2(BaseEnvironment):
                 state[1] = i
                 break
 
+        return state
+
+    def get_observation_COL(self, robot_state, obstacle_position):
+        '''
+        give coordinations in continuous space (state), return state_observation.
+        In: robot_state, ModelState(); obstacle_position, tuple(3)
+        Returns: state_observation, int
+        '''
+        # in the world frame
+        x_relative = obstacle_position[0] - robot_state.pose.position.x
+        y_relative = obstacle_position[1] - robot_state.pose.position.y
+
+        # coordinates transfer
+        # 在base系中的坐标 = world系在base系中的旋转矩阵(base系在world系中的旋转矩阵求逆) × 在world系中的坐标
+        # 坐标变换一定要万分小心仔细
+        q = robot_state.pose.orientation
+        r_matrix = trans.quaternion_matrix([q.x, q.y, q.z, q.w])[:3, :3]
+        r_matrix_inverse = trans.inverse_matrix(r_matrix)
+        relative_coor_base = np.dot(
+            r_matrix_inverse, [x_relative, y_relative, 0])
+
+        # print 'relative_coor_base =', relative_coor_base
+
+        # get RL state
+        state = self.get_polar_coor_COL(
+            relative_coor_base[0], relative_coor_base[1])
+        return state[0] * self.maze_dim_COL['num_fan'] + state[1]
+
+    def get_polar_coor_COL(self, x, y):
+        '''get the polar coordinate of Rectangular coordinate (x,y) in COL mission
+        '''
+        state = [0, 0]  # ring, fan
+        dis_borders = [(0.0, 0.5), (0.5, 0.6), (0.6, 0.7),
+                       (0.7, 0.8), (0.8, 0.9)]
+        degree_borders = [(0, 45), (45, 90), (90, 135), (135, 180),
+                          (-180, -135), (-135, -90), (-90, -45), (-45, 0)]
+
+        distance = np.sqrt(x ** 2 + y ** 2)
+        if distance > 0.9:
+            state[0] = 4
+        else:
+            for i, (down, up) in enumerate(dis_borders):
+                if distance >= down and distance < up:
+                    state[0] = i
+                    break
+
+        degree = math.atan2(y, x) * 180 / math.pi
+        # print 'degree = ', degree
+
+        # (-180, 180]
+        if degree <= -180:
+            degree += 360
+        elif degree > 180:
+            degree -= 360
+        # print 'degree2 =', degree
+
+        for i, (down, up) in enumerate(degree_borders):
+            if degree > down and degree <= up:
+                state[1] = i
+                break
+
+        print 'COL ring, fan: ', state
         return state
 
     def coor_trans(self, command, current_state):
@@ -322,32 +395,40 @@ class GazeboEnvironment2(BaseEnvironment):
 
         return cmd
 
-    def get_reward_from_obs_TGT(self, observation):
+    def get_reward_from_obs_TGT(self, observation, out_flag):
         '''input: the observation of target seek task
         output: reward and is_terminal flag
         '''
-        ring_index_old = self.reward_obs_term[1] / self.maze_dim[1]
+        reward = 0.0
+        is_terminal = False
+
+        ring_index_old = self.reward_obs_term['TGT'][1] / \
+            self.maze_dim_TGT['num_fan']
         ring_index_new = None
 
-        fan_index_old = self.reward_obs_term[1] % self.maze_dim[1]
+        fan_index_old = self.reward_obs_term['TGT'][1] % self.maze_dim_TGT['num_fan']
         fan_index_new = None
 
-        # step 1.1: Determine if the position gets closer
+        # step 0: Determine if the agent is out of the border
+        if out_flag == True:
+            reward = -10.0
+
+        # step 1: Determine if the position gets closer
         if reward == 0:
-            ring_index_new = observation / self.maze_dim[1]
+            ring_index_new = observation / self.maze_dim_TGT['num_fan']
             if ring_index_new < ring_index_old:  # move closer
                 reward += 5.0
             elif ring_index_new > ring_index_old:
                 reward -= 5.0
 
-            # step 1.2: Determine if the angle gets closer
-            fan_index_new = observation % self.maze_dim[1]
+            # step 2: Determine if the angle gets closer
+            fan_index_new = observation % self.maze_dim_TGT['num_fan']
             if min((fan_index_new - 0), (11 - fan_index_new)) < min((fan_index_old - 0), (11 - fan_index_old)):
                 reward += 5.0
             elif min((fan_index_new - 0), (11 - fan_index_new)) > min((fan_index_old - 0), (11 - fan_index_old)):
                 reward -= 5.0
 
-        # step 2: Determine if the terminal condition has been met.
+        # step 3: Determine if the terminal condition has been met.
         dist = np.sqrt((self.current_state.pose.position.x -
                         self.target_position[0])**2 + (self.current_state.pose.position.y - self.target_position[1])**2)
         if dist <= self.end_radius:
@@ -355,9 +436,23 @@ class GazeboEnvironment2(BaseEnvironment):
             is_terminal = True
             print 'Succeed!!!!!'
 
-        # step 3： give -1 when no other reward is given, make sure the agent will find the shortest path.
+        # step 4： give -1 when no other reward is given, make sure the agent will find the shortest path.
         if reward == 0:
             reward = -1
+
+        return reward, is_terminal
+
+    def get_reward_from_obs_COL(self, observation):
+        '''input: the observation of target seek task
+        output: reward and is_terminal flag
+        '''
+        reward = 0.0
+        is_terminal = False
+
+        # in the innerest circle
+        if observation <= 7:
+            reward = -100
+            is_terminal = True
 
         return reward, is_terminal
 
@@ -371,65 +466,46 @@ class GazeboEnvironment2(BaseEnvironment):
             (float, state, Boolean): a tuple of the reward, state observation,
                 and boolean indicating if it's terminal.
         """
-        reward = 0.0
-        is_terminal = False
 
-        # # step 1: get action
+        # step 1: get action
         cmd = self.get_action_from_index(action_index)
 
         # step 2: get the command under the map frame
         cmd_transferred = self.coor_trans(cmd, self.current_state)
 
         # step 3: Determine if the 'out of border' condition has been met and takes the action.
-        if self.out_of_bounds(cmd_transferred, self.current_state, self.target_position, self.reward_obs_term[1]):
-            reward = -10.0
+        out_flag = False
+        if self.out_of_bounds(cmd_transferred, self.current_state, self.target_position, self.reward_obs_term['TGT'][1]):
+            out_flag = True
         else:
             # print 'cmd_transferred =', cmd_transferred
             # print 'action_index =', action_index
             self.send_cmd_until_stop(cmd_transferred, transfer_flag=False)
 
+        # =========== TGT mission ==================
         # step4: get the observation (RL state) based on the relative position
         observation = self.get_observation_TGT(
             self.current_state, self.target_position)
 
-        reward, is_terminal = self.get_reward_from_obs_TGT(observation)
+        # step5: get reward and is_terminal flag
+        reward, is_terminal = self.get_reward_from_obs_TGT(
+            observation, out_flag)
 
-        # ring_index_old = self.reward_obs_term[1] / self.maze_dim[1]
-        # ring_index_new = None
+        self.reward_obs_term['TGT'] = [reward, observation, is_terminal]
 
-        # fan_index_old = self.reward_obs_term[1] % self.maze_dim[1]
-        # fan_index_new = None
+        # =========== COL mission ===================
+       # step4: get the observation (RL state) based on the relative position
+        observation_COL = self.get_observation_COL(
+            self.current_state, self.obstacle_position)
 
-        # # step 4.1: Determine if the position gets closer
-        # if reward == 0:
-        #     ring_index_new = observation / self.maze_dim[1]
-        #     if ring_index_new < ring_index_old:  # move closer
-        #         reward += 5.0
-        #     elif ring_index_new > ring_index_old:
-        #         reward -= 5.0
+        # step5: get reward and is_terminal flag
+        reward_COL, is_terminal_COL = self.get_reward_from_obs_COL(
+            observation_COL)
 
-        #     # step 4.2: Determine if the angle gets closer
-        #     fan_index_new = observation % self.maze_dim[1]
-        #     if min((fan_index_new - 0), (11 - fan_index_new)) < min((fan_index_old - 0), (11 - fan_index_old)):
-        #         reward += 5.0
-        #     elif min((fan_index_new - 0), (11 - fan_index_new)) > min((fan_index_old - 0), (11 - fan_index_old)):
-        #         reward -= 5.0
+        self.reward_obs_term['COL'] = [
+            reward_COL, observation_COL, is_terminal_COL]
 
-        # # step 5: Determine if the terminal condition has been met.
-        # dist = np.sqrt((self.current_state.pose.position.x -
-        #                 self.target_position[0])**2 + (self.current_state.pose.position.y - self.target_position[1])**2)
-        # if dist <= self.end_radius:
-        #     reward = 50.0
-        #     is_terminal = True
-        #     print 'Succeed!!!!!'
-
-        # # step 6： give -1 when no other reward is given, make sure the agent will find the shortest path.
-        # if reward == 0:
-        #     reward = -1
-
-        self.reward_obs_term = [reward, observation, is_terminal]
-
-        # print 'reward_obs_term =', self.reward_obs_term
+        print "reward_obs_term['COL'] =", self.reward_obs_term['COL']
         return self.reward_obs_term
 
     def env_cleanup(self):
@@ -446,19 +522,20 @@ class GazeboEnvironment2(BaseEnvironment):
             string: the response (or answer) to the message
         """
         if message == "what is the current reward?":
-            return "{}".format(self.reward_obs_term[0])
+            return "{}".format(self.reward_obs_term['TGT'][0])
 
         # else
         return "I don't know how to respond to your message"
 
 
 if __name__ == "__main__":
-    env = GazeboEnvironment()
+    env = GazeboEnvironment2()
 
     # command = Twist()
     # command.angular.z = -90 * math.pi / 180  # from radians to degrees
     # command.linear.x = -0.6
-    env_info = {"end_radius": 0.05, "target_x": 0.0, "target_y": 1.0}
+    env_info = {"end_radius": 0.05, "target_x": 1.2,
+                "target_y": 1.2, 'obstacle_x': 0.6, 'obstacle_y': 0.6}
     env.env_init(env_info)
     env.env_start()
     while True:

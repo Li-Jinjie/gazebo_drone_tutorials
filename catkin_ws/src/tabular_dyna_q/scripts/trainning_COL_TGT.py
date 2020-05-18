@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-07 10:18:06
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-18 09:48:28
+@LastEditTime : 2020-05-18 16:19:01
 @Units        : None
 @Description  : This file could train colision avoidance task on the basis of target seek ability.
 @Dependencies : None
@@ -15,9 +15,8 @@ import os
 import sys
 import time
 import numpy as np
-from agents.dyna_q_plus import DynaQPlusAgent
 from agents.dyna_q import DynaQAgent
-from environments.gazebo_env import GazeboEnvironment
+from environments.gazebo_2_tasks_env import GazeboEnvironment2
 from scipy.stats import sem
 import matplotlib.pyplot as plt
 from rl_glue import RLGlue
@@ -33,14 +32,14 @@ if __name__ == "__main__":
     # os.makedirs('results', exist_ok=True)
 
     agent = DynaQAgent
-    env = GazeboEnvironment
+    env = GazeboEnvironment2
     all_reward_sums = {}  # Contains sum of rewards during episode
     all_state_visits = {}  # Contains state visit counts during the last 10 episodes
     agent_info = {"num_actions": 10, "num_states": 121,
                   "epsilon": 0.1, "step_size": 0.5, "discount": 0.9, "planning_steps": 5}
     # env_info = {"end_radius": 0.05, "target_x": 1.2, "target_y": -1.2}
     env_info = {"end_radius": 0.05, 'robot_name': 'uav1',
-                'random_flag': True, 'target_x': 1.2, 'target_y': -1.2}
+                'random_flag': True, 'target_x': 1.2, 'target_y': -1.2, 'obstacle_x': 0.6, 'obstacle_y': 0.6}
 
     num_runs = 1  # The number of runs 原来是100
     num_episodes = 150  # The number of episodes in each run

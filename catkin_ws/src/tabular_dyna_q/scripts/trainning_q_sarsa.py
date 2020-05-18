@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-07 10:18:06
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-09 22:47:22
+@LastEditTime : 2020-05-18 10:54:18
 @Units        : None
 @Description  : file content
 @Dependencies : None
@@ -15,9 +15,9 @@ import os
 import sys
 import time
 import numpy as np
-from q_learning import QLearningAgent
-from expected_sarsa import ExpectedSarsaAgent
-from gazebo_env import GazeboEnvironment
+from agents.q_learning import QLearningAgent
+from agents.expected_sarsa import ExpectedSarsaAgent
+from environments.gazebo_env import GazeboEnvironment
 from scipy.stats import sem
 import matplotlib.pyplot as plt
 from rl_glue import RLGlue
