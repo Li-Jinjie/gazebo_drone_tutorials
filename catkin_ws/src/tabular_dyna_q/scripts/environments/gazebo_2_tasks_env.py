@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-04 18:48:56
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-18 22:58:55
+@LastEditTime : 2020-05-19 17:16:37
 @Units        : Meter, radian (if no description)
 @Description  : env类，与gazebo联动,可生成避障(colision avoidance, COL)与目标追踪(target seek, TGT)两个任务对应的状态
 @Dependencies : None
@@ -115,7 +115,6 @@ class GazeboEnvironment2(BaseEnvironment):
         self.current_state.pose = States.pose[index]
         self.current_state.twist = States.twist[index]
         self.current_state.reference_frame = 'world'
-        # print self.current_state
 
     def set_robot_state(self, state):
         '''Set the model state equals to state
@@ -318,7 +317,6 @@ class GazeboEnvironment2(BaseEnvironment):
         distance = np.sqrt(x ** 2 + y ** 2)
         if distance > 0.9:
             state[0] = 4
-            # out_of_border_flag = True
 
         else:
             for i, (down, up) in enumerate(dis_borders):
@@ -461,22 +459,38 @@ class GazeboEnvironment2(BaseEnvironment):
         fan_index_old = self.reward_obs_term['COL'][1] % self.maze_dim_COL['num_fan']
         fan_index_new = observation % self.maze_dim_COL['num_fan']
 
-        # 飞到更外圈，+5
-        if ring_index_new > ring_index_old:
-            reward += 5
+        # 上一个状态在最外圈，则不对最外圈的状态进行更新
+        if ring_index_old == 4:
+            pass
+        else:
+            # 飞到更外圈，+5
+            if ring_index_new > ring_index_old:
+                reward += 10
+            elif ring_index_new < ring_index_old:
+                reward -= 5
 
-        # 状态1和状态8到状态0的距离都为1. 前方原理障碍物， +5； 否则-5
-        max_fan_index = self.maze_dim_COL['num_fan']
+            # 从内圈脱离范围，加很多
+            if ring_index_old < 4 and ring_index_new == 4:
+                reward += 20
 
-        if min((fan_index_new - 0), (max_fan_index - fan_index_new)) < min((fan_index_old - 0), (11 - fan_index_old)):
-            reward -= 5.0
-        elif min((fan_index_new - 0), (11 - fan_index_new)) > min((fan_index_old - 0), (11 - fan_index_old)):
-            reward += 5.0
+            # 状态1和状态8到状态0的距离都为1. 前方原理障碍物， +5； 否则-5
+            # max_fan_index = self.maze_dim_COL['num_fan']
+            # if min((fan_index_new - 0), (max_fan_index - fan_index_new)) < min((fan_index_old - 0), (11 - fan_index_old)):
+            #     reward -= 5.0
+            # elif min((fan_index_new - 0), (11 - fan_index_new)) > min((fan_index_old - 0), (11 - fan_index_old)):
+            #     reward += 5.0
 
-        # in the innerest circle
-        if observation <= 7:
-            reward = -100
-            is_terminal = True
+            if fan_index_new >= 3 and fan_index_new <= 6:
+                reward += 0
+            elif fan_index_new == 2 or fan_index_new == 7:
+                reward -= 1
+            else:
+                reward -= 5
+
+            # in the innerest circle
+            if observation <= 7:
+                reward = -100
+                is_terminal = True
 
         return reward, is_terminal
 
@@ -492,6 +506,14 @@ class GazeboEnvironment2(BaseEnvironment):
         """
 
         # step 1: get action
+        # a = raw_input("请输入一个介于[0, 9]之间的数字,对应9个动作,按c让agent自己选择, 按q退出: ")
+        # if a >= '0' and a <= '9':
+        #     inta = int(a)
+        #     if inta <= 9 and inta >= 0:
+        #         action_index = int(a)
+        # elif a == 'q':
+        #     quit()
+
         cmd = self.get_action_from_index(action_index)
 
         # step 2: get the command under the map frame
@@ -533,6 +555,7 @@ class GazeboEnvironment2(BaseEnvironment):
         self.reward_obs_term['COL'] = [
             reward_COL, observation_COL, is_terminal_COL]
 
+        # print 'current position', self.current_state.pose.position
         # print "reward_obs_term['COL'] =", self.reward_obs_term['COL']
         return self.reward_obs_term['COL']
 

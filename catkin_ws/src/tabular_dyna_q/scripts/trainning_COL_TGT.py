@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-07 10:18:06
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-18 23:36:26
+@LastEditTime : 2020-05-19 21:30:03
 @Units        : None
 @Description  : This file could train colision avoidance task on the basis of target seek ability.
 @Dependencies : None
@@ -36,13 +36,14 @@ if __name__ == "__main__":
     all_reward_sums = {}  # Contains sum of rewards during episode
     all_state_visits = {}  # Contains state visit counts during the last 10 episodes
     agent_info = {"num_actions": 10, "num_states": 45,
-                  "epsilon": 0.1, "step_size": 0.5, "discount": 0.9, "planning_steps": 5}
+                  "epsilon": 0.2, "step_size": 0.5, "discount": 0.9, "planning_steps": 5}
     # env_info = {"end_radius": 0.05, "target_x": 1.2, "target_y": -1.2}
-    env_info = {"end_radius": 0.05, 'robot_name': 'uav1',
-                'random_flag': False, 'target_x': 2.0, 'target_y': 2.0, 'obstacle_x': 0.8, 'obstacle_y': 0.6}
+    env_info = {"end_radius": 0.20, 'robot_name': 'uav1',
+                'random_flag': False, 'target_x': 2.0, 'target_y': 2.0, 'obstacle_x': 0.6, 'obstacle_y': 1.5}
+    # 训练了一组： 'target_x': 2.0, 'target_y': 2.0, 'obstacle_x': 0.8, 'obstacle_y': 0.6
 
     num_runs = 1  # The number of runs 原来是100
-    num_episodes = 200  # The number of episodes in each run
+    num_episodes = 50  # The number of episodes in each run
 
     all_reward_sums = []
     all_episode_time = []
@@ -52,7 +53,9 @@ if __name__ == "__main__":
         agent_info["seed"] = run
         rl_glue = RLGlue(env, agent)
         rl_glue.rl_init(agent_info, env_info)
-        # path = "results/DynaQ_table_r2_e50.npy"
+        path = "results/exSarsaCOL_table_r1_e100.npy"
+        rl_glue.agent.q_COL = np.load(path)
+        print 'q_table_COL', rl_glue.agent.q_COL
         # rl_glue.agent.q_values = np.load(path)
 
         reward_sums = []
@@ -72,11 +75,16 @@ if __name__ == "__main__":
             state_visits[state] += 1
             is_terminal = False
             while not is_terminal:
+                rl_glue.agent.q_COL[36:45, :] = 0
+
                 rl_glue.agent.state_TGT = env.get_observation_TGT(
                     env.current_state, env.target_position)
 
                 reward, state, action, is_terminal = rl_glue.rl_step()
                 state_visits[state] += 1
+
+            np.save('results/exSarsaCOL_table_tmp.npy',
+                    rl_glue.agent.q_COL)
 
             end_time = time.clock()
             reward_sums.append(rl_glue.rl_return())
@@ -84,14 +92,14 @@ if __name__ == "__main__":
 
             print "The time of ", episode, " episode:", end_time - start_time
 
-        print 'q_table_COL:', rl_glue.agent.q_COL
+        # print 'q_table_COL:', rl_glue.agent.q_COL
         all_reward_sums.append(reward_sums)
         all_state_visits.append(state_visits)
         all_episode_time.append(episode_time)
 
     # save results
 
-    np.save('results/exSarsaCOL_table_r1_e200.npy', rl_glue.agent.q_values)
-    np.save('results/exSarsaCOL_r1_e200.npy', all_reward_sums)
-    np.save('results/exSarsaCOL_state_r1_e200.npy', all_state_visits)
-    np.save('results/exSarsaCOL_episode_time_r1_e200.npy', all_episode_time)
+    np.save('results/exSarsaCOL_table_r1_e100_2.npy', rl_glue.agent.q_COL)
+    np.save('results/exSarsaCOL_r1_e100_2.npy', all_reward_sums)
+    np.save('results/exSarsaCOL_state_r1_e100_2.npy', all_state_visits)
+    np.save('results/exSarsaCOL_episode_time_r1_e100_2.npy', all_episode_time)

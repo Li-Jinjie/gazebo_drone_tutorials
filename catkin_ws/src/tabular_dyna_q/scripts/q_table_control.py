@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-07 10:18:06
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-16 20:40:24
+@LastEditTime : 2020-05-19 16:57:53
 @Units        : None
 @Description  : The usage of q-table to control the uav flying to the target
 @Dependencies : None
@@ -120,30 +120,3 @@ if __name__ == "__main__":
     # 在gazebo_env节点里已经包含了init了节点
     rospy.Subscriber('rl_cmd', Vector3, callback)
     rospy.spin()
-
-    # while True:
-    #     flag = raw_input("Do you want to quit? (T/F)")
-    #     if flag == 'T':
-    #         print "Quit successfully!"
-    #         break
-    #     else:
-    #         pass
-
-    #     start_time = time.clock()
-
-    #     x = raw_input("Please input the x coordination:")
-    #     x = float(x)
-    #     y = raw_input("Please input the y coordination:")
-    #     y = float(y)
-
-    #     # Runs an episode while keeping track of visited states
-    #     rl_glue.environment.target_x = x
-    #     rl_glue.environment.target_y = y
-    #     state, action = rl_glue.rl_start()
-    #     is_terminal = False
-    #     while not is_terminal:
-    #         reward, state, action, is_terminal = rl_glue.rl_step()
-
-    #     end_time = time.clock()
-
-    #     print "The time of episode:", end_time - start_time

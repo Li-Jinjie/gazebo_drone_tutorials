@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-18 17:52:10
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-18 23:32:18
+@LastEditTime : 2020-05-19 17:16:58
 @Units        : None
 @Description  : This agent has TGT and COL two agent
 @Dependencies : None
@@ -96,6 +96,8 @@ class ExpectedSarsaAgentCOL(BaseAgent):
         # Choose action using epsilon greedy.
         current_q_TGT = self.q_TGT[state_TGT, :]
         current_q_COL = self.q_COL[state_COL, :]
+
+        # print 'current_q_COL:', current_q_COL
 
         if self.rand_generator.rand() < self.epsilon:
             action = self.rand_generator.randint(self.num_actions)

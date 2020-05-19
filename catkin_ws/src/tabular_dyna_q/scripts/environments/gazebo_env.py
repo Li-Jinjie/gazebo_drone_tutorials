@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-04 18:48:56
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-18 22:50:30
+@LastEditTime : 2020-05-19 10:21:26
 @Units        : Meter, radian (if no description)
 @Description  : env类，与gazebo联动
 @Dependencies : None
@@ -164,9 +164,9 @@ class GazeboEnvironment(BaseEnvironment):
         # set the random target position
         if self.randomFlag == True:
             self.target_x = np.random.rand() * 3.6 - 1.8
-            self.target_x = round(self.target_x, 1)
+            self.target_x = round(self.target_x, 2)
             self.target_y = np.random.rand() * 3.6 - 1.8
-            self.target_y = round(self.target_y, 1)
+            self.target_y = round(self.target_y, 2)
 
             origin = self.init_robot_state.pose.position
             self.target_position = (
