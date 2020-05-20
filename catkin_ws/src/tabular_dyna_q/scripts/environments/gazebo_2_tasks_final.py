@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-04 18:48:56
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-19 22:02:22
+@LastEditTime : 2020-05-20 16:52:42
 @Units        : Meter, radian (if no description)
 @Description  : env类，与gazebo联动,可生成避障(colision avoidance, COL)与目标追踪(target seek, TGT)两个任务对应的状态
 @Dependencies : None
@@ -46,14 +46,19 @@ class GazeboEnvironment2(BaseEnvironment):
         except rospy.ROSInitException:
             print "Error: 初始化节点失败，检查gazebo环境是否提前运行。"
 
+        self.trajectory = []
+
         # -----------Default Robot State-----------------------
         self.randomFlag = env_info.get('random_flag', False)
         self.robot_name = env_info.get('robot_name', 'uav1')
-        self.target_x = env_info.get('target_x', 0.0)
-        self.target_y = env_info.get('target_y', 0.0)
-        self.obstacle_x = env_info.get('obstacle_x', 1.0)
-        self.obstacle_y = env_info.get('obstacle_y', 1.0)
+        self.target_x = env_info.get('target_x', 2.0)
+        self.target_y = env_info.get('target_y', 2.0)
+        # 默认设置的范围内没障碍物
+        self.obstacle_x = env_info.get('obstacle_x', 100.0)
+        self.obstacle_y = env_info.get('obstacle_y', 100.0)
         self.fuck_rotate = 0
+
+        self.leader_name = 'uav1'
 
         self.init_robot_state = ModelState()
         self.init_robot_state.model_name = self.robot_name
@@ -90,6 +95,10 @@ class GazeboEnvironment2(BaseEnvironment):
         # The robot's pose and twist infomation under world frame
         self.current_state = ModelState()
 
+        # The leader's pose and twist information under world frame
+        if self.leader_name != self.robot_name:
+            self.leader_state = ModelState()
+
         # -----------Publisher and Subscriber-------------
         self.sub_state = rospy.Subscriber(
             '/gazebo/model_states', ModelStates, self.state_callback)
@@ -111,11 +120,42 @@ class GazeboEnvironment2(BaseEnvironment):
         '''The callback function of Subscriber: sub_state.
         Update the current state of robot 'robot_name'
         '''
-        index = States.name.index(self.robot_name)
+        self_index = States.name.index(self.robot_name)
         self.current_state.model_name = self.robot_name
-        self.current_state.pose = States.pose[index]
-        self.current_state.twist = States.twist[index]
+        self.current_state.pose = States.pose[self_index]
+        self.current_state.twist = States.twist[self_index]
         self.current_state.reference_frame = 'world'
+
+        # if not leader
+        if self.leader_name != self.robot_name:
+            leader_index = States.name.index(self.leader_name)
+            self.leader_state.model_name = self.leader_name
+            self.leader_state.pose = States.pose[leader_index]
+            self.leader_state.twist = States.twist[leader_index]
+            self.leader_state.reference_frame = 'world'
+
+        min_distance = None
+        self_x = self.current_state.pose.position.x
+        self_y = self.current_state.pose.position.y
+
+        for i in len(States.name):
+            # 不是本机
+            if i != self_index:
+                x = States.pose[i].position.x
+                y = States.pose[i].position.y
+
+                relative_dis = np.sqrt((x - self_x)**2 + (y - self_y)**2)
+                if relative_dis < min_distance or min_distance == None:
+                    min_distance = relative_dis
+                    min_x = x
+                    min_y = y
+
+        if min_distance != None:
+            self.obstacle_x = (1.0/min_distance) * self_x + \
+                (min_distance - 1)/min_distance * min_x
+            self.obstacle_y = (1.0/min_distance) * self_y + \
+                (min_distance - 1)/min_distance * min_y
+            print 'obstacle: ', self.obstacle_x, self.obstacle_y
 
     def set_robot_state(self, state):
         '''Set the model state equals to state
@@ -169,20 +209,28 @@ class GazeboEnvironment2(BaseEnvironment):
         Returns:
             The first state observation from the environment.
         """
-        # set the random target position
-        if self.randomFlag == True:
-            self.target_x = np.random.rand() * 3.6 - 1.8
-            self.target_x = round(self.target_x, 1)
-            self.target_y = np.random.rand() * 3.6 - 1.8
-            self.target_y = round(self.target_y, 1)
+        # # set the random target position
+        # if self.randomFlag == True:
+        #     self.target_x = np.random.rand() * 3.6 - 1.8
+        #     self.target_x = round(self.target_x, 1)
+        #     self.target_y = np.random.rand() * 3.6 - 1.8
+        #     self.target_y = round(self.target_y, 1)
 
-            origin = self.init_robot_state.pose.position
-            self.target_position = (
-                origin.x + self.target_x, origin.y + self.target_y, origin.z)
-            print 'target_position = ', self.target_position
+        #     origin = self.init_robot_state.pose.position
+        #     self.target_position = (
+        #         origin.x + self.target_x, origin.y + self.target_y, origin.z)
+        #     print 'target_position = ', self.target_position
 
-        # reset the current state = init_state
-        self.set_robot_state(self.init_robot_state)
+        # # reset the current state = init_state
+        # self.set_robot_state(self.init_robot_state)
+
+        self.target_position = (
+            self.target_x, self.target_y, self.init_robot_state.pose.position.z)
+        self.obstacle_position = (
+            self.obstacle_x, self.obstacle_y, self.init_robot_state.pose.position.z)
+
+        self.trajectory.append(
+            (self.current_state.pose.position.x, self.current_state.pose.position.y))
 
         # get_observation
         self.reward_obs_term['TGT'][1] = self.get_observation_TGT(
@@ -190,9 +238,6 @@ class GazeboEnvironment2(BaseEnvironment):
 
         self.reward_obs_term['COL'][1] = self.get_observation_COL(
             self.current_state, self.obstacle_position)
-
-        # print 'TGT_state, COL_state', (
-        #     self.reward_obs_term['TGT'][1], self.reward_obs_term['COL'][1])
 
         # return RL state
         return self.reward_obs_term['COL'][1]
@@ -492,6 +537,7 @@ class GazeboEnvironment2(BaseEnvironment):
             if observation <= 7:
                 reward = -100
                 is_terminal = True
+                print 'Crush!!! No!!!'
 
         return reward, is_terminal
 
@@ -506,6 +552,11 @@ class GazeboEnvironment2(BaseEnvironment):
                 and boolean indicating if it's terminal.
         """
 
+        # self.target_position = (
+        #     self.target_x, self.target_y, self.init_robot_state.pose.position.z)
+        self.obstacle_position = (
+            self.obstacle_x, self.obstacle_y, self.init_robot_state.pose.position.z)
+
         # step 1: get action
 
         # a = raw_input("请输入一个介于[0, 9]之间的数字,对应9个动作,按c让agent自己选择, 按q退出: ")
@@ -516,6 +567,9 @@ class GazeboEnvironment2(BaseEnvironment):
         # elif a == 'q':
         #     quit()
 
+        # 在避障状态的才算
+        # if self.reward_obs_term['COL'][1] < 36 and action_index > 2:
+        #     self.fuck_rotate += 1
         if action_index > 2:
             self.fuck_rotate += 1
 
@@ -537,6 +591,10 @@ class GazeboEnvironment2(BaseEnvironment):
         #   print 'cmd_transferred =', cmd_transferred
         #   print 'action_index =', action_index
         self.send_cmd_until_stop(cmd_transferred, transfer_flag=False)
+
+        # record every step
+        self.trajectory.append(
+            (self.current_state.pose.position.x, self.current_state.pose.position.y))
 
         # =========== TGT mission ==================
         # step4: get the observation (RL state) based on the relative position
@@ -571,7 +629,6 @@ class GazeboEnvironment2(BaseEnvironment):
 
     def env_cleanup(self):
         """Cleanup done after the environment ends"""
-        self.current_state = ModelState()
 
     def env_message(self, message):
         """A message asking the environment for information

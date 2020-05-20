@@ -26,8 +26,10 @@
    </include>
    <!-- <include file="$(find apriltag_ros)/launch/continuous_detection.launch"/>
    <include file="$(find robot_localization)/launch/tags_imu_ekf.launch"/>
-   <include file ="$(find integrated_navigation)/launch/integrated_navigation_node.launch"/>
-   <include file ="$(find tabular_dyna_q)/launch/tabular_q_control.launch"/> -->
+   <include file ="$(find integrated_navigation)/launch/integrated_navigation_node.launch"/> -->
+   <!-- <include file ="$(find tabular_dyna_q)/launch/tabular_q_control.launch"/> -->
+   <include file ="$(find tabular_dyna_q)/launch/tabular_q_control_COL_TGT.launch"/>
+   
 </group>
 
 </launch>

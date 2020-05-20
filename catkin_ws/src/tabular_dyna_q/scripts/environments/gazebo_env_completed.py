@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-04 18:48:56
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-16 21:13:19
+@LastEditTime : 2020-05-20 10:51:17
 @Units        : Meter, radian (if no description)
 @Description  : env类，与gazebo联动
 @Dependencies : None
@@ -222,13 +222,6 @@ class GazeboEnvironmentCommpleted(BaseEnvironment):
                 return False
         else:
             return False
-
-    # check if there is an obstacle at (row, col)
-    # def is_obstacle(self, row, col):
-    #     if [row, col] in self.obstacles:
-    #         return True
-    #     else:
-    #         return False
 
     def get_observation(self, robot_state, target_position):
         '''

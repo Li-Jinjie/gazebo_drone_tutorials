@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-07 10:18:06
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-20 09:55:58
+@LastEditTime : 2020-05-20 16:57:37
 @Units        : None
 @Description  : The usage of q-table to control the uav flying to the target
 @Dependencies : None
@@ -18,8 +18,8 @@ import numpy as np
 import rospy
 from geometry_msgs.msg import Vector3
 from geometry_msgs.msg import Twist
-from agents.agent_completed import AgentCompleted
-from environments.gazebo_env_completed import GazeboEnvironmentCommpleted
+from agents.agent_COL_TGT import Agent_COL_TGT
+from environments.gazebo_2_tasks_final import GazeboEnvironment2
 from rl_glue import RLGlue
 from tf.transformations import *
 
@@ -68,9 +68,21 @@ def callback(cmd_body):
     # Runs an episode while keeping track of visited states
     rl_glue.environment.target_x = x
     rl_glue.environment.target_y = y
+
+    # 手动更新一下TGT任务的RL state
+    env = rl_glue.environment
+    rl_glue.agent.state_TGT = env.get_observation_TGT(
+        env.current_state, env.target_position)
+
     state, action = rl_glue.rl_start()
     is_terminal = False
     while not is_terminal:
+
+        # 手动更新一下TGT任务的RL state
+        env = rl_glue.environment
+        rl_glue.agent.state_TGT = env.get_observation_TGT(
+            env.current_state, env.target_position)
+
         reward, state, action, is_terminal = rl_glue.rl_step()
     end_time = time.clock()
     print 'Total time:', end_time - start_time
@@ -78,14 +90,21 @@ def callback(cmd_body):
 
     # step3: 到达目的地以后，校正朝向
     final_cmd = Twist()   # world frame
+
     final_cmd.linear.x = rl_glue.environment.current_state.pose.position.x
     final_cmd.linear.y = rl_glue.environment.current_state.pose.position.y
     final_cmd.linear.z = rl_glue.environment.current_state.pose.position.z
-    # q1 = rl_glue.environment.current_state.pose.orientation
-    # rpy_current = euler_from_quaternion([q1.x, q1.y, q1.z, q1.w])
-    q2 = rl_glue.environment.leader_state.pose.orientation
-    rpy_leader = euler_from_quaternion([q2.x, q2.y, q2.z, q2.w])
-    final_cmd.angular.z = rpy_leader[2]
+
+    try:
+        # is follower
+        q2 = rl_glue.environment.leader_state.pose.orientation
+        rpy_leader = euler_from_quaternion([q2.x, q2.y, q2.z, q2.w])
+        final_cmd.angular.z = rpy_leader[2]
+    except:
+        # is leader
+        q1 = rl_glue.environment.current_state.pose.orientation
+        rpy_current = euler_from_quaternion([q1.x, q1.y, q1.z, q1.w])
+        final_cmd.angular.z = rpy_current[2]
 
     # step4: 到达位置后，调整朝向，且定在那里不动。
     start = time.clock()
@@ -103,8 +122,8 @@ if __name__ == "__main__":
     name = re.findall(r'/(.*)/', ns)[0]
     # name = 'uav1'
 
-    agent = AgentCompleted
-    env = GazeboEnvironmentCommpleted
+    agent = Agent_COL_TGT
+    env = GazeboEnvironment2
 
     agent_info = {
         'q_path': "/home/ljj/gazebo_drone_tutorials/catkin_ws/src/tabular_dyna_q/scripts/results/DynaQ_table_r1_e150.npy"}

@@ -24,7 +24,9 @@
      <arg name="use_ground_truth_for_control" value="$(arg use_ground_truth_for_control)"/>
      <arg name="use_pose_estimation" value="$(arg use_pose_estimation)"/>
    </include>
-   <include file ="$(find tabular_dyna_q)/launch/tabular_q_control.launch"/>
+   
+   <!-- <include file ="$(find tabular_dyna_q)/launch/tabular_q_control.launch"/> -->
+   <include file ="$(find tabular_dyna_q)/launch/tabular_q_control_COL_TGT.launch"/>
 
    <!-- <include file="$(find apriltag_ros)/launch/continuous_detection.launch"/>
    <include file="$(find robot_localization)/launch/tags_imu_ekf.launch"/>
@@ -43,7 +45,10 @@
      <arg name="use_ground_truth_for_control" value="$(arg use_ground_truth_for_control)"/>
      <arg name="use_pose_estimation" value="$(arg use_pose_estimation)"/>
    </include>
-   <include file ="$(find tabular_dyna_q)/launch/tabular_q_control.launch"/>
+
+   <!-- <include file ="$(find tabular_dyna_q)/launch/tabular_q_control.launch"/> -->
+   <include file ="$(find tabular_dyna_q)/launch/tabular_q_control_COL_TGT.launch"/>
+
    <!-- <include file="$(find apriltag_ros)/launch/continuous_detection.launch"/>
    <include file="$(find robot_localization)/launch/tags_imu_ekf.launch"/>
    <include file ="$(find integrated_navigation)/launch/integrated_navigation_node.launch"/> -->
@@ -61,7 +66,10 @@
      <arg name="use_ground_truth_for_control" value="$(arg use_ground_truth_for_control)"/>
      <arg name="use_pose_estimation" value="$(arg use_pose_estimation)"/>
    </include>
-   <include file ="$(find tabular_dyna_q)/launch/tabular_q_control.launch"/>
+
+   <!-- <include file ="$(find tabular_dyna_q)/launch/tabular_q_control.launch"/> -->
+   <include file ="$(find tabular_dyna_q)/launch/tabular_q_control_COL_TGT.launch"/>
+
    <!-- <include file="$(find apriltag_ros)/launch/continuous_detection.launch"/>
    <include file="$(find robot_localization)/launch/tags_imu_ekf.launch"/>
    <include file ="$(find integrated_navigation)/launch/integrated_navigation_node.launch"/> -->
@@ -79,7 +87,10 @@
      <arg name="use_ground_truth_for_control" value="$(arg use_ground_truth_for_control)"/>
      <arg name="use_pose_estimation" value="$(arg use_pose_estimation)"/>
    </include>
-   <include file ="$(find tabular_dyna_q)/launch/tabular_q_control.launch"/>
+
+   <!-- <include file ="$(find tabular_dyna_q)/launch/tabular_q_control.launch"/> -->
+   <include file ="$(find tabular_dyna_q)/launch/tabular_q_control_COL_TGT.launch"/>
+
    <!-- <include file="$(find apriltag_ros)/launch/continuous_detection.launch"/>
    <include file="$(find robot_localization)/launch/tags_imu_ekf.launch"/>
    <include file ="$(find integrated_navigation)/launch/integrated_navigation_node.launch"/> -->
@@ -97,7 +108,10 @@
      <arg name="use_ground_truth_for_control" value="$(arg use_ground_truth_for_control)"/>
      <arg name="use_pose_estimation" value="$(arg use_pose_estimation)"/>
    </include>
-   <include file ="$(find tabular_dyna_q)/launch/tabular_q_control.launch"/>
+
+   <!-- <include file ="$(find tabular_dyna_q)/launch/tabular_q_control.launch"/> -->
+   <include file ="$(find tabular_dyna_q)/launch/tabular_q_control_COL_TGT.launch"/>
+
    <!-- <include file="$(find apriltag_ros)/launch/continuous_detection.launch"/>
    <include file="$(find robot_localization)/launch/tags_imu_ekf.launch"/>
    <include file ="$(find integrated_navigation)/launch/integrated_navigation_node.launch"/> -->
