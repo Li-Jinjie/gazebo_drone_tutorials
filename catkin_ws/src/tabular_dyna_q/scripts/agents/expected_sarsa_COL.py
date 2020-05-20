@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-18 17:52:10
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-19 22:08:39
+@LastEditTime : 2020-05-20 18:01:43
 @Units        : None
 @Description  : This agent has TGT and COL two agent
 @Dependencies : None
@@ -73,7 +73,7 @@ class ExpectedSarsaAgentCOL(BaseAgent):
             action = self.rand_generator.randint(self.num_actions)
         else:
             # get action from both q_tables
-            action = self.argmax(current_q_TGT + 2 * current_q_COL)
+            action = self.argmax(current_q_TGT + * current_q_COL)
         self.prev_state = state_COL
         self.prev_action = action
         return action
@@ -102,7 +102,7 @@ class ExpectedSarsaAgentCOL(BaseAgent):
         if self.rand_generator.rand() < self.epsilon:
             action = self.rand_generator.randint(self.num_actions)
         else:
-            action = self.argmax(current_q_TGT + 2 * current_q_COL)
+            action = self.argmax(current_q_TGT + 1 * current_q_COL)
 
         # Perform an update (~5 lines)
         ### START CODE HERE ###

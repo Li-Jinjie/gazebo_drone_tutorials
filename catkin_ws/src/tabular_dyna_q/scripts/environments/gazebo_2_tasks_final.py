@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-04 18:48:56
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-20 16:52:42
+@LastEditTime : 2020-05-20 19:55:07
 @Units        : Meter, radian (if no description)
 @Description  : env类，与gazebo联动,可生成避障(colision avoidance, COL)与目标追踪(target seek, TGT)两个任务对应的状态
 @Dependencies : None
@@ -14,6 +14,7 @@
 from template_environment import BaseEnvironment
 
 import rospy
+from scipy import io
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Odometry
@@ -107,7 +108,9 @@ class GazeboEnvironment2(BaseEnvironment):
             '/gazebo/set_model_state', ModelState, queue_size=10)
 
         self.pub_command = rospy.Publisher(
-            '/uav1/pose_cmd', Twist, queue_size=10)
+            rospy.get_namespace()+'pose_cmd', Twist, queue_size=10)
+        # self.pub_command = rospy.Publisher(
+        # '/uav2/pose_cmd', Twist, queue_size = 10)
 
         rospy.sleep(2.)
         # # What function to call when you ctrl + c
@@ -138,7 +141,7 @@ class GazeboEnvironment2(BaseEnvironment):
         self_x = self.current_state.pose.position.x
         self_y = self.current_state.pose.position.y
 
-        for i in len(States.name):
+        for i in range(len(States.name)):
             # 不是本机
             if i != self_index:
                 x = States.pose[i].position.x
@@ -151,11 +154,11 @@ class GazeboEnvironment2(BaseEnvironment):
                     min_y = y
 
         if min_distance != None:
-            self.obstacle_x = (1.0/min_distance) * self_x + \
-                (min_distance - 1)/min_distance * min_x
-            self.obstacle_y = (1.0/min_distance) * self_y + \
-                (min_distance - 1)/min_distance * min_y
-            print 'obstacle: ', self.obstacle_x, self.obstacle_y
+            self.obstacle_x = (0.5/min_distance) * self_x + \
+                (min_distance - 0.5)/min_distance * min_x
+            self.obstacle_y = (0.5/min_distance) * self_y + \
+                (min_distance - 0.5)/min_distance * min_y
+            # print 'obstacle: ', self.obstacle_x, self.obstacle_y
 
     def set_robot_state(self, state):
         '''Set the model state equals to state
@@ -339,7 +342,7 @@ class GazeboEnvironment2(BaseEnvironment):
         # 在base系中的坐标 = world系在base系中的旋转矩阵(base系在world系中的旋转矩阵求逆) × 在world系中的坐标
         # 坐标变换一定要万分小心仔细
         q = robot_state.pose.orientation
-        r_matrix = trans.quaternion_matrix([q.x, q.y, q.z, q.w])[:3, :3]
+        r_matrix = trans.quaternion_matrix([q.x, q.y, q.z, q.w])[: 3, : 3]
         r_matrix_inverse = trans.inverse_matrix(r_matrix)
         relative_coor_base = np.dot(
             r_matrix_inverse, [x_relative, y_relative, 0])
@@ -401,7 +404,7 @@ class GazeboEnvironment2(BaseEnvironment):
 
         if command.linear.x != 0:
             # 旋转后base_link坐标系在map坐标系中的姿态 × 目标点在base_link坐标系的中的位置 + base_link坐标系在map坐标系中的位置
-            r_matrix = trans.quaternion_matrix([q.x, q.y, q.z, q.w])[:3, :3]
+            r_matrix = trans.quaternion_matrix([q.x, q.y, q.z, q.w])[: 3, : 3]
 
             t = np.dot(r_matrix, [command.linear.x, command.linear.y, command.linear.z]) + \
                 [current_state.pose.position.x, current_state.pose.position.y,
@@ -557,6 +560,8 @@ class GazeboEnvironment2(BaseEnvironment):
         self.obstacle_position = (
             self.obstacle_x, self.obstacle_y, self.init_robot_state.pose.position.z)
 
+        # print "obstacle's position:", self.obstacle_position
+
         # step 1: get action
 
         # a = raw_input("请输入一个介于[0, 9]之间的数字,对应9个动作,按c让agent自己选择, 按q退出: ")
@@ -568,12 +573,13 @@ class GazeboEnvironment2(BaseEnvironment):
         #     quit()
 
         # 在避障状态的才算
-        # if self.reward_obs_term['COL'][1] < 36 and action_index > 2:
-        #     self.fuck_rotate += 1
-        if action_index > 2:
+        if self.reward_obs_term['COL'][1] < 36 and action_index > 2:
             self.fuck_rotate += 1
 
-        if self.fuck_rotate > 10:
+        # if action_index > 2:
+        #     self.fuck_rotate += 1
+
+        if self.fuck_rotate > 8:
             action_index = 1
             self.fuck_rotate = 0
             print 'fuck rotation!!!!!!!'
@@ -616,9 +622,11 @@ class GazeboEnvironment2(BaseEnvironment):
         reward_COL, is_terminal_COL = self.get_reward_from_obs_COL(
             observation_COL)
 
-        # 为了让碰到障碍物和到达目标点都结束
+        # 只让到达目标点才结束
         if is_terminal == True:
             is_terminal_COL = True
+        else:
+            is_terminal_COL = False
 
         self.reward_obs_term['COL'] = [
             reward_COL, observation_COL, is_terminal_COL]
@@ -629,6 +637,9 @@ class GazeboEnvironment2(BaseEnvironment):
 
     def env_cleanup(self):
         """Cleanup done after the environment ends"""
+        path = "/home/ljj/gazebo_drone_tutorials/catkin_ws/src/tabular_dyna_q/scripts/results/"
+        io.savemat(path+self.robot_name+'_COL_trajectory.mat',
+                   {self.robot_name: self.trajectory})
 
     def env_message(self, message):
         """A message asking the environment for information

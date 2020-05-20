@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-03 17:42:04
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-20 12:14:00
+@LastEditTime : 2020-05-20 19:45:54
 @Units        : None
 @Description  : The agent whose actions depend totally on the q table.
 @Dependencies : None
@@ -66,7 +66,7 @@ class Agent_COL_TGT(BaseAgent):
         current_q_TGT = self.q_TGT[state_TGT, :]
         current_q_COL = self.q_COL[state_COL, :]
 
-        action = self.argmax(current_q_TGT + 2 * current_q_COL)
+        action = self.argmax(current_q_TGT + 1.5 * current_q_COL)
 
         return action
 
@@ -86,9 +86,9 @@ class Agent_COL_TGT(BaseAgent):
         current_q_TGT = self.q_TGT[state_TGT, :]
         current_q_COL = self.q_COL[state_COL, :]
 
-        print 'current_q_COL', current_q_COL
+        # print 'current_q_COL', current_q_COL
 
-        action = self.argmax(current_q_TGT + 2 * current_q_COL)
+        action = self.argmax(current_q_TGT + 1.5 * current_q_COL)
 
         return action
 

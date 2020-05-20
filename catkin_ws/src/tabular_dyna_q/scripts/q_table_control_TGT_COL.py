@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-05-07 10:18:06
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-20 16:57:37
+@LastEditTime : 2020-05-20 19:55:28
 @Units        : None
 @Description  : The usage of q-table to control the uav flying to the target
 @Dependencies : None
@@ -76,8 +76,8 @@ def callback(cmd_body):
 
     state, action = rl_glue.rl_start()
     is_terminal = False
+    print 'target:', rl_glue.environment.target_position
     while not is_terminal:
-
         # 手动更新一下TGT任务的RL state
         env = rl_glue.environment
         rl_glue.agent.state_TGT = env.get_observation_TGT(
@@ -111,8 +111,8 @@ def callback(cmd_body):
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():
         rl_glue.environment.pub_command.publish(final_cmd)
-        if time.clock() - start > 10:
-            break
+        # if time.clock() - start > 10:
+        #     break
         rate.sleep()
 
 
@@ -120,7 +120,7 @@ if __name__ == "__main__":
     # initialization
     ns = rospy.get_namespace()
     name = re.findall(r'/(.*)/', ns)[0]
-    # name = 'uav1'
+    # name = 'uav2'
 
     agent = Agent_COL_TGT
     env = GazeboEnvironment2
@@ -128,7 +128,7 @@ if __name__ == "__main__":
     agent_info = {
         'q_path': "/home/ljj/gazebo_drone_tutorials/catkin_ws/src/tabular_dyna_q/scripts/results/DynaQ_table_r1_e150.npy"}
     # env_info = {"end_radius": 0.05, "target_x": 1.2, "target_y": -1.2}
-    env_info = {"end_radius": 0.05, 'robot_name': name,
+    env_info = {"end_radius": 0.08, 'robot_name': name,
                 'target_x': 0.0, 'target_y': 0.0}
 
     rl_glue = RLGlue(env, agent)

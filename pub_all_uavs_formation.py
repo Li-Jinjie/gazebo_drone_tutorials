@@ -4,7 +4,7 @@
 @Author       : LI Jinjie
 @Date         : 2020-03-13 09:48:44
 @LastEditors  : LI Jinjie
-@LastEditTime : 2020-05-16 18:31:21
+@LastEditTime : 2020-05-20 18:46:52
 @Units        : None
 @Description  : 让五架飞机都飞起来到指定的位置
 @Dependencies : None
@@ -37,7 +37,7 @@ def pub_vel_des_test():
     # pubs = [pub_pose_uav1, pub_pose_uav2,
     #         pub_pose_uav3, pub_pose_uav4]
 
-    positions = [(-1., 1.), (1., 1.), (1., -1.), (-1., -1.)]
+    positions = [(0, -1.5), (1.5, 0), (0, 1.5), (-1.5, 0)]
 
     rate = rospy.Rate(10)
     i = 0
