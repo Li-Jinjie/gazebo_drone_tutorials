@@ -1,0 +1,118 @@
+<?xml version="1.0"?>
+
+<launch>
+   <!-- <arg name="name" default="uav1"/>
+   <arg name="tf_prefix" default="uav1"/>
+   <arg name="x" default="0.0"/>
+   <arg name="y" default="0.0"/>
+   <arg name="z" default="0.3"/> -->
+
+   <arg name="use_ground_truth_for_tf" default="true"/>
+   <arg name="use_ground_truth_for_control" default="true"/>
+   <arg name="use_pose_estimation" if="$(arg use_ground_truth_for_control)" default="false"/>
+   <arg name="use_pose_estimation" unless="$(arg use_ground_truth_for_control)" default="true"/>
+
+<group ns="uav1">
+   <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+     <arg name="name" default="uav1"/>
+     <arg name="model" value="$(find hector_quadrotor_description)/urdf/quadrotor_downward_cam.gazebo.xacro"/>
+     <arg name="tf_prefix" default="uav1"/>
+     <arg name="x" default="0.0"/>
+     <arg name="y" default="0.0"/>
+     <arg name="z" default="0.3"/>   
+     <arg name="use_ground_truth_for_tf" value="$(arg use_ground_truth_for_tf)"/>
+     <arg name="use_ground_truth_for_control" value="$(arg use_ground_truth_for_control)"/>
+     <arg name="use_pose_estimation" value="$(arg use_pose_estimation)"/>
+   </include>
+
+   <include file ="$(find tabular_dyna_q)/launch/tabular_q_control_COL_TGT.launch"/>
+
+   <!-- <include file="$(find apriltag_ros)/launch/continuous_detection.launch"/>
+   <include file="$(find robot_localization)/launch/tags_imu_ekf.launch"/>
+   <include file ="$(find integrated_navigation)/launch/integrated_navigation_node.launch"/> -->
+</group>
+
+<group ns="uav2">
+   <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+     <arg name="name" default="uav2"/>
+     <arg name="model" value="$(find hector_quadrotor_description)/urdf/quadrotor_downward_cam.gazebo.xacro"/>
+     <arg name="tf_prefix" default="uav2"/>
+     <arg name="x" default="1.0"/>
+     <arg name="y" default="1.0"/>
+     <arg name="z" default="0.3"/>   
+     <arg name="use_ground_truth_for_tf" value="$(arg use_ground_truth_for_tf)"/>
+     <arg name="use_ground_truth_for_control" value="$(arg use_ground_truth_for_control)"/>
+     <arg name="use_pose_estimation" value="$(arg use_pose_estimation)"/>
+   </include>
+
+   <include file ="$(find tabular_dyna_q)/launch/tabular_q_control_COL_TGT.launch"/>
+
+   <!-- <include file="$(find apriltag_ros)/launch/continuous_detection.launch"/>
+   <include file="$(find robot_localization)/launch/tags_imu_ekf.launch"/>
+   <include file ="$(find integrated_navigation)/launch/integrated_navigation_node.launch"/> -->
+</group>
+
+<group ns="uav3">
+   <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+     <arg name="name" default="uav3"/>
+     <arg name="model" value="$(find hector_quadrotor_description)/urdf/quadrotor_downward_cam.gazebo.xacro"/>
+     <arg name="tf_prefix" default="uav3"/>
+     <arg name="x" default="2.0"/>
+     <arg name="y" default="2.0"/>
+     <arg name="z" default="0.3"/>   
+     <arg name="use_ground_truth_for_tf" value="$(arg use_ground_truth_for_tf)"/>
+     <arg name="use_ground_truth_for_control" value="$(arg use_ground_truth_for_control)"/>
+     <arg name="use_pose_estimation" value="$(arg use_pose_estimation)"/>
+   </include>
+
+   <include file ="$(find tabular_dyna_q)/launch/tabular_q_control_COL_TGT.launch"/>
+
+   <!-- <include file="$(find apriltag_ros)/launch/continuous_detection.launch"/>
+   <include file="$(find robot_localization)/launch/tags_imu_ekf.launch"/>
+   <include file ="$(find integrated_navigation)/launch/integrated_navigation_node.launch"/> -->
+</group>
+
+<group ns="uav4">
+   <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+     <arg name="name" default="uav4"/>
+     <arg name="model" value="$(find hector_quadrotor_description)/urdf/quadrotor_downward_cam.gazebo.xacro"/>
+     <arg name="tf_prefix" default="uav4"/>
+     <arg name="x" default="-1.0"/>
+     <arg name="y" default="-1.0"/>
+     <arg name="z" default="0.3"/>   
+     <arg name="use_ground_truth_for_tf" value="$(arg use_ground_truth_for_tf)"/>
+     <arg name="use_ground_truth_for_control" value="$(arg use_ground_truth_for_control)"/>
+     <arg name="use_pose_estimation" value="$(arg use_pose_estimation)"/>
+   </include>
+
+   <!-- <include file ="$(find tabular_dyna_q)/launch/tabular_q_control.launch"/> -->
+   <include file ="$(find tabular_dyna_q)/launch/tabular_q_control_COL_TGT.launch"/>
+
+   <!-- <include file="$(find apriltag_ros)/launch/continuous_detection.launch"/>
+   <include file="$(find robot_localization)/launch/tags_imu_ekf.launch"/>
+   <include file ="$(find integrated_navigation)/launch/integrated_navigation_node.launch"/> -->
+</group>
+
+<group ns="uav5">
+   <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+     <arg name="name" default="uav5"/>
+     <arg name="model" value="$(find hector_quadrotor_description)/urdf/quadrotor_downward_cam.gazebo.xacro"/>
+     <arg name="tf_prefix" default="uav5"/>
+     <arg name="x" default="-2.0"/>
+     <arg name="y" default="-2.0"/>
+     <arg name="z" default="0.3"/>   
+     <arg name="use_ground_truth_for_tf" value="$(arg use_ground_truth_for_tf)"/>
+     <arg name="use_ground_truth_for_control" value="$(arg use_ground_truth_for_control)"/>
+     <arg name="use_pose_estimation" value="$(arg use_pose_estimation)"/>
+   </include>
+
+   <!-- <include file ="$(find tabular_dyna_q)/launch/tabular_q_control.launch"/> -->
+   <include file ="$(find tabular_dyna_q)/launch/tabular_q_control_COL_TGT.launch"/>
+
+   <!-- <include file="$(find apriltag_ros)/launch/continuous_detection.launch"/>
+   <include file="$(find robot_localization)/launch/tags_imu_ekf.launch"/>
+   <include file ="$(find integrated_navigation)/launch/integrated_navigation_node.launch"/> -->
+</group>
+
+</launch>
+
