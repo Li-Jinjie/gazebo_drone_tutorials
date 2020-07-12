@@ -73,12 +73,14 @@ class GazeboEnvironment(BaseEnvironment):
         self.maze_dim = [11, 11]
 
         origin = self.init_robot_state.pose.position
+        
         # coordination of the target point.
         self.target_position = (
             origin.x + self.target_x, origin.y + self.target_y, origin.z)
 
         # self.end_state = [0, 0]
         self.end_radius = env_info["end_radius"]  # meters
+        
         # The robot's pose and twist infomation under world frame
         self.current_state = ModelState()
 
