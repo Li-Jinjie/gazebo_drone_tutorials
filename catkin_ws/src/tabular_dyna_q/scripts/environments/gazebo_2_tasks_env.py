@@ -6,7 +6,7 @@
 @LastEditors  : LI Jinjie
 @LastEditTime : 2020-05-19 22:02:22
 @Units        : Meter, radian (if no description)
-@Description  : env类，与gazebo联动,可生成避障(colision avoidance, COL)与目标追踪(target seek, TGT)两个任务对应的状态
+@Description  : env类，与gazebo联动,可生成避障(colision avoidance, COL)与目标追踪(target seek, TGT)两个任务对应的状态. To train the colision avoidance task.
 @Dependencies : None
 @NOTICE       : current_state 存的是机器人在world中的状态，target_position存的是要飞到的位置，RL中的state其实是target_position相对current_state的位置，在get_observation_TGT()中可以看到具体使用。
 '''
