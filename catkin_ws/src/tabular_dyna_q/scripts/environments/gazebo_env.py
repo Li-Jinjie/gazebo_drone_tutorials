@@ -6,7 +6,7 @@
 @LastEditors  : LI Jinjie
 @LastEditTime : 2020-05-19 10:21:26
 @Units        : Meter, radian (if no description)
-@Description  : env类，与gazebo联动
+@Description  : Env class, working with Gazebo. Use it when training the target seek task. 
 @Dependencies : None
 @NOTICE       : current_state 存的是机器人在world中的状态，target_position存的是要飞到的位置，RL中的state其实是target_position相对current_state的位置，在get_observation()中可以看到具体使用。
 '''
